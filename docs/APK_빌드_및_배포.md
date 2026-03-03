@@ -49,17 +49,33 @@ gh release upload v1.0.0 build/app/outputs/flutter-apk/app-release.apk --repo az
 
 ---
 
-## 2. GitHub Actions로 자동 빌드 (Release 발행 시)
+## 2. 방법 B — 태그 푸시로 자동 Release + APK 빌드 (권장)
 
-Release를 **Publish**하면 GitHub Actions가 APK를 빌드해 해당 Release에 첨부합니다. (완료까지 약 3~5분)
+**버전 태그만 푸시하면** Release가 자동 생성되고, APK가 빌드되어 해당 Release에 붙습니다.
 
-1. **Releases** → **Create a new release** → Tag `v1.0.0` (또는 새 버전), 제목 입력 후 **Publish release**
-2. **Actions** 탭에서 워크플로 완료 대기
+```bash
+# 프로젝트 루트에서 (예: v1.0.4)
+git tag v1.0.4
+git push origin v1.0.4
+```
+
+1. **Auto Release on Tag** 워크플로가 해당 태그로 Release를 생성·발행합니다.
+2. **Build Release APK** 워크플로가 자동으로 실행되어 APK를 빌드하고, 그 Release에 업로드합니다.
+3. 약 5~7분 후 **Releases** 페이지에서 해당 버전의 **app-release.apk** 를 다운로드할 수 있습니다.
+
+---
+
+## 3. GitHub Actions로 자동 빌드 (Release를 수동으로 만든 경우)
+
+Release를 웹에서 **Publish**해도 동일하게 APK가 빌드·첨부됩니다. (완료까지 약 5~7분)
+
+1. **Releases** → **Create a new release** → Tag `v1.0.x` (또는 새 버전), 제목 입력 후 **Publish release**
+2. **Actions** 탭에서 **Build Release APK** 완료 대기
 3. Release 페이지에 **app-release.apk** 가 나타나면 다운로드 가능
 
 ---
 
-## 3. 정식 배포 시 체크
+## 4. 정식 배포 시 체크
 
 - **앱 서명**: Release 빌드는 `android/app/build.gradle` 의 `signingConfig` 에 따라 서명됩니다. 정식 배포용 키스토어가 설정되어 있어야 합니다.
 - **버전**: `upbit_trading_app/pubspec.yaml` 의 `version` 과 `lib/constants/app_version.dart` 의 `kAppVersion` 을 배포 버전에 맞게 올려주세요.

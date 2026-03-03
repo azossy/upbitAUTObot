@@ -1,0 +1,21 @@
+# 배짱이 — 태그 푸시 시 자동 Release 생성 (이후 Build Release APK 워크플로가 APK 빌드·업로드)
+
+name: Auto Release on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'   # v1.0.3, v1.0.4 등
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          title="배짱이 $tag"
+          body="배짱이(Baejjangi) 업비트 현물 자동매매 앱 — Android APK. 태그 $tag 기준 빌드."
+          gh release create "$tag" --title "$title" --notes "$body"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
