@@ -1,17 +1,18 @@
-# 배짱이 — 태그 푸시 시 자동 Release 생성 (이후 Build Release APK 워크플로가 APK 빌드·업로드)
+# 배짱이 — 태그 푸시 시 Release 생성 + APK 빌드 + 업로드 (한 워크플로에서 완결)
 
 name: Auto Release on Tag
 
 on:
   push:
     tags:
-      - 'v*'   # v1.0.3, v1.0.4 등
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  create-release:
+  release-and-build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # Release 생성·업로드에 필요 (403 방지)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,5 +25,42 @@ jobs:
           title="배짱이 $tag"
           body="배짱이(Baejjangi) 업비트 현물 자동매매 앱 — Android APK. 태그 $tag 기준 빌드."
           gh release create "$tag" --title "$title" --notes "$body"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools platforms;android-35 build-tools;34.0.0 ndk;26.1.10909125'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses || true
+
+      - name: Get dependencies
+        working-directory: upbit_trading_app
+        run: flutter pub get
+
+      - name: Build APK (release)
+        working-directory: upbit_trading_app
+        run: flutter build apk --release
+
+      - name: Upload APK to Release
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          cp upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
+          gh release upload "$tag" app-release.apk --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
