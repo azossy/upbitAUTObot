@@ -258,7 +258,7 @@ class _PnlHistoryChartState extends State<PnlHistoryChart> {
             color: lineColor,
             barWidth: 2.5,
             isStrokeCapRound: true,
-            dotData: const FlDotData(show: true, dotSize: 3.5),
+            dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: _chartType == PnlChartType.area,
               gradient: fillGradient,

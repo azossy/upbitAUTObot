@@ -16,7 +16,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-static const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
+const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Map<String, dynamic>? _status;

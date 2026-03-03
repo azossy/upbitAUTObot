@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/locale_provider.dart';
 
@@ -13,7 +14,7 @@ class PositionsScreen extends ConsumerStatefulWidget {
   ConsumerState<PositionsScreen> createState() => _PositionsScreenState();
 }
 
-static const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
+const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
 
 class _PositionsScreenState extends ConsumerState<PositionsScreen> {
   List<dynamic> _positions = [];

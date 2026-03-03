@@ -254,7 +254,7 @@ class _PnlChartState extends State<PnlChart> {
             color: lineColor,
             barWidth: 2.5,
             isStrokeCapRound: true,
-            dotData: const FlDotData(show: true, dotSize: 4),
+            dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: _chartType == PnlSummaryChartType.area,
               gradient: fillGradient,

@@ -27,6 +27,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses || true
+
       - name: Get dependencies
         working-directory: upbit_trading_app
         run: flutter pub get
