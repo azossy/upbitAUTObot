@@ -147,6 +147,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// 회원가입 1단계: 인증 메일 발송. 성공 시 null, 실패 시 에러 메시지.
+  Future<String?> sendVerificationEmail(String email) async {
+    try {
+      await _api.sendVerificationEmail(email);
+      return null;
+    } on DioException catch (e) {
+      return getApiErrorMessage(e, fallback: '인증 메일 발송에 실패했습니다.');
+    } catch (e) {
+      return getApiErrorMessage(e, fallback: '인증 메일 발송에 실패했습니다.');
+    }
+  }
+
+  /// 회원가입 2단계: 인증 번호 확인 후 가입 완료. 성공 시 null, 실패 시 에러 메시지.
+  Future<String?> verifyAndRegister({
+    required String email,
+    required String password,
+    required String nickname,
+    required String code,
+  }) async {
+    try {
+      await _api.verifyAndRegister(
+        email: email,
+        password: password,
+        nickname: nickname,
+        code: code,
+      );
+      return null;
+    } on DioException catch (e) {
+      return getApiErrorMessage(e, fallback: '가입에 실패했습니다.');
+    } catch (e) {
+      return getApiErrorMessage(e, fallback: '가입에 실패했습니다.');
+    }
+  }
+
   void logout() {
     _api.clearToken();
     _biometric.clearSavedToken();

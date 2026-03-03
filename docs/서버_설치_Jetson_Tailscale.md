@@ -4,6 +4,10 @@
 
 Jetson Orin Nano Super 8GB (Ubuntu)에 백엔드를 설치하고, **Tailscale**로 포트포워딩 없이 현재 PC·스마트폰에서 접속하는 방법입니다.
 
+**※ 본인 Jetson Tailscale IP**: `100.80.178.45`  
+- SSH: `ssh 사용자명@100.80.178.45`  
+- 앱 API 서버 주소: `http://100.80.178.45:8000`
+
 ---
 
 ## 1. 전체 흐름 요약

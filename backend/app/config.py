@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # FCM (Firebase Cloud Messaging) — 서비스 계정 JSON 경로
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
 
+    # 이메일 발송 (회원가입 인증·축하 메일)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "배짱이 <noreply@example.com>"
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
+
     # 서버
     DEBUG: bool = False
 

@@ -30,6 +30,7 @@ async def get_db():
 
 
 async def init_db():
+    from app.models import email_verification  # noqa: F401 — 테이블 생성용
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # 기존 DB에 프로필/언어 컬럼 추가 (이미 있으면 무시)

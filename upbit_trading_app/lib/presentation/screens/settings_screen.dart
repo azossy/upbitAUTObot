@@ -352,7 +352,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _apiBaseUrlController,
                       decoration: const InputDecoration(
                         labelText: 'API 서버 주소',
-                        hintText: 'http://127.0.0.1:8000',
+                        hintText: 'http://100.80.178.45:8000',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.url,

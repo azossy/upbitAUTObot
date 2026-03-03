@@ -1,15 +1,17 @@
 """인증 API"""
+import secrets
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from math import ceil
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 import httpx
 
 from app.database import get_db
 from app.models.user import User, UserRole
+from app.models.email_verification import EmailVerification
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
@@ -21,6 +23,13 @@ from app.schemas.auth import (
     UserResponse,
     MessageResponse,
     FcmTokenRequest,
+    SendVerificationEmailRequest,
+    VerifyAndRegisterRequest,
+)
+from app.services.email_service import (
+    is_smtp_configured,
+    send_verification_email,
+    send_welcome_email,
 )
 from app.utils.security import (
     hash_password,
@@ -44,6 +53,7 @@ LOCKOUT_MINUTES = 15
 
 @router.post("/register", response_model=MessageResponse, status_code=201)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    """기존 회원가입 (인증 없이). 앱에서는 인증 플로우(verify-and-register) 사용 권장."""
     existing = await db.execute(select(User).where(User.email == req.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="이미 등록된 이메일")
@@ -56,6 +66,65 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.commit()
     return MessageResponse(message="회원가입 완료")
+
+
+@router.post("/send-verification-email", response_model=MessageResponse)
+async def send_verification_email_endpoint(
+    req: SendVerificationEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """회원가입 인증용 6자리 코드를 이메일로 발송. SMTP 설정 필요."""
+    if not is_smtp_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="이메일 발송이 설정되지 않았습니다. 서버 관리자에게 문의하세요.",
+        )
+    existing = await db.execute(select(User).where(User.email == req.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    expires_at = now_utc + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
+    await db.execute(delete(EmailVerification).where(EmailVerification.email == req.email))
+    db.add(EmailVerification(email=req.email, code=code, expires_at=expires_at))
+    await db.commit()
+    if not send_verification_email(req.email, code):
+        raise HTTPException(status_code=503, detail="이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.")
+    return MessageResponse(message="인증 메일을 발송했습니다. 메일함을 확인해 주세요.")
+
+
+@router.post("/verify-and-register", response_model=MessageResponse, status_code=201)
+async def verify_and_register(
+    req: VerifyAndRegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """이메일 인증 코드 확인 후 회원가입 완료. 축하 메일 발송 후 로그인 화면으로."""
+    existing = await db.execute(select(User).where(User.email == req.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+    result = await db.execute(
+        select(EmailVerification)
+        .where(EmailVerification.email == req.email)
+        .order_by(EmailVerification.expires_at.desc())
+        .limit(1)
+    )
+    row = result.scalar_one_or_none()
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if not row or row.expires_at < now_utc:
+        raise HTTPException(status_code=400, detail="인증 번호가 만료되었거나 일치하지 않습니다. 인증 메일을 다시 요청해 주세요.")
+    if row.code != req.code.strip():
+        raise HTTPException(status_code=400, detail="인증 번호가 일치하지 않습니다.")
+    user = User(
+        email=req.email,
+        password_hash=hash_password(req.password),
+        nickname=req.nickname,
+        role=UserRole.USER,
+    )
+    db.add(user)
+    await db.execute(delete(EmailVerification).where(EmailVerification.email == req.email))
+    await db.commit()
+    send_welcome_email(req.email, req.nickname)
+    return MessageResponse(message="회원가입이 완료되었습니다. 로그인해 주세요.")
 
 
 @router.post("/login", response_model=TokenResponse)

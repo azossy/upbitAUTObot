@@ -13,6 +13,17 @@ class RegisterRequest(BaseModel):
     nickname: str = Field(..., min_length=1, max_length=100, description="닉네임 1~100자")
 
 
+class SendVerificationEmailRequest(BaseModel):
+    email: EmailStr = Field(..., description="인증 메일을 받을 이메일")
+
+
+class VerifyAndRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, description="비밀번호 8자 이상")
+    nickname: str = Field(..., min_length=1, max_length=100, description="닉네임 1~100자")
+    code: str = Field(..., min_length=4, max_length=10, description="이메일로 받은 인증 번호")
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1, description="비밀번호 필수")

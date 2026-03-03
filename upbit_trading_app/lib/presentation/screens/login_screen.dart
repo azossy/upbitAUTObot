@@ -266,29 +266,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('로그인'),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _loading ? null : _onGoogleLogin,
-                            icon: const Icon(Icons.g_mobiledata, size: 22),
-                            label: const Text('구글'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _loading ? null : _onKakaoLogin,
-                            icon: const Text('K', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            label: const Text('카카오'),
-                          ),
-                        ),
-                      ],
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _onGoogleLogin,
+                      icon: const Icon(Icons.g_mobiledata, size: 22),
+                      label: const Text('구글 계정으로 로그인'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _onKakaoLogin,
+                      icon: const Text('K', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      label: const Text('카카오 계정으로 로그인'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Center(
                       child: TextButton(
-                        onPressed: () => context.push('/register'),
+                        onPressed: _loading
+                            ? null
+                            : () {
+                                final router = GoRouter.of(context);
+                                router.push('/register');
+                              },
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(120, 48),
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                        ),
                         child: const Text('회원가입'),
                       ),
                     ),
