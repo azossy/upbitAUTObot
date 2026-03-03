@@ -8,11 +8,13 @@ on:
     types: [published]
   workflow_dispatch:   # Actions 탭에서 "Run workflow" 버튼으로 수동 실행 가능
 
+# Release 업로드 시 403 방지 (반드시 필요)
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # Release에 APK 업로드에 필요 (403 방지)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
