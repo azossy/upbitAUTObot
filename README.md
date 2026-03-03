@@ -11,7 +11,8 @@
 
 ### 1. Android 앱 설치
 
-- **[Releases](https://github.com/azossy/upbitAUTObot/releases)** 에서 최신 버전의 `app-release.apk` 를 다운로드합니다.
+- **[Releases](https://github.com/azossy/upbitAUTObot/releases)** 에서 최신 버전의 `app-release.apk` 를 다운로드합니다.  
+  (Release 생성 후 GitHub Actions가 자동으로 APK를 빌드해 첨부합니다. 첫 배포 시 3~5분 정도 걸릴 수 있습니다.)
 - Android 기기에 APK를 복사한 뒤 설치합니다. (설치 시 "알 수 없는 앱" 허용 필요할 수 있음)
 - 앱 실행 후 **설정 → API 서버 주소**에 본인이 운영하는 서버 주소를 입력합니다. (예: `http://서버IP:8000`)
 
