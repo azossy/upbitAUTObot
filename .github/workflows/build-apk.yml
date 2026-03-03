@@ -1,0 +1,43 @@
+# 배짱이 Android APK 빌드 — 정식 배포용
+# Release 생성 시 자동으로 APK 빌드 후 해당 Release에 업로드합니다.
+
+name: Build Release APK
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        working-directory: upbit_trading_app
+        run: flutter pub get
+
+      - name: Build APK (release)
+        working-directory: upbit_trading_app
+        run: flutter build apk --release
+
+      - name: Upload APK to Release
+        run: |
+          cp upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
+          gh release upload "${{ github.event.release.tag_name }}" app-release.apk --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
