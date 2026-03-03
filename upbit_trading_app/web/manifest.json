@@ -1,11 +1,11 @@
 {
-    "name": "upbit_trading_app",
-    "short_name": "upbit_trading_app",
+    "name": "배짱이",
+    "short_name": "배짱이",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0381FE",
+    "theme_color": "#0381FE",
+    "description": "배짱이 — 업비트 연동 자동매매 앱",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
