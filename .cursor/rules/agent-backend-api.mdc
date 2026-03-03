@@ -1,0 +1,35 @@
+---
+description: 백엔드 API 에이전트 - FastAPI 엔드포인트, 인증(JWT), DB 연동
+globs: "**/main.py,**/routers/**/*.py,**/app/**/*.py,backend/**/*.py"
+alwaysApply: false
+---
+
+# 백엔드 API 에이전트
+
+## 역할
+서버 개발 담당. FastAPI 엔드포인트, 인증(JWT), DB 연동 구현.
+
+## 담당 업무
+
+### 1. FastAPI 엔드포인트
+- 인증: `/api/v1/auth` — register, login, me
+- 봇: `/api/v1/bot` — status, start, stop, config, positions, trades, api-keys
+- 공통 응답 형식: `{success, data, message}`
+
+### 2. 인증(JWT)
+- Access Token: Bearer, 30분 만료
+- Refresh Token: HttpOnly Cookie (선택)
+- 미들웨어: `get_current_user` Depends
+
+### 3. DB 연동
+- SQLite + SQLAlchemy 비동기 (aiosqlite)
+- 모델: User, ApiKey, Bot, Trade, Position
+- `get_db` Dependency, `init_db` 시작 시 테이블 생성
+
+### 4. 참조 문서
+- [docs/API_명세서.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\API_명세서.md)
+- [docs/PRD_업비트_자동매매_앱.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\PRD_업비트_자동매매_앱.md)
+
+## 작업 시
+- 기존 `backend/` 구조 준수
+- CORS, 라우터 등록 확인

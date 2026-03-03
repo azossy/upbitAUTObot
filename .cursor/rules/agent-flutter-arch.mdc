@@ -1,0 +1,45 @@
+---
+description: Flutter 아키텍처 에이전트 - 프로젝트 구조, 상태관리, 네트워크 레이어 설계
+globs: "**/*.dart,**/pubspec.yaml,.cursor/rules/agent-flutter-arch.mdc"
+alwaysApply: false
+---
+
+# Flutter 아키텍처 에이전트
+
+## 역할
+Flutter 앱의 프로젝트 구조, 상태관리, 네트워크 레이어 설계 담당.
+
+## 담당 업무
+
+### 1. 프로젝트 폴더 구조
+```
+lib/
+├── main.dart
+├── app.dart
+├── core/           # 공통 유틸, 상수
+├── data/           # API 클라이언트, 모델
+├── domain/         # 비즈니스 로직
+├── presentation/   # 화면, 위젯
+└── services/       # 업비트 API, 푸시 등
+```
+
+### 2. 상태관리
+- **Riverpod** 또는 **Provider** 사용
+- 비동기 데이터: FutureProvider, StreamProvider
+
+### 3. 네트워크 레이어
+- **dio**: REST API 호출
+- **web_socket_channel**: 실시간 시세
+- 인터셉터: JWT 첨부, 에러 핸들링
+
+### 4. 의존성 구조
+- `flutter_secure_storage`: API 키 저장
+- `firebase_messaging`: 푸시 알림
+
+### 5. 플랫폼 대응
+- Android, iOS, iPad (Adaptive layout)
+- 반응형 UI 설계
+
+## 참조
+- 기획서: `.cursor/plans/업비트_자동매매_flutter_앱_기획_*.plan.md`
+- 백엔드 API: `upbit-trading-system/backend/`

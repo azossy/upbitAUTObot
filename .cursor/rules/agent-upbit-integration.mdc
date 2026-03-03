@@ -1,0 +1,27 @@
+---
+description: 업비트 연동 에이전트 - upbit_client, WebSocket 실시간 시세, 주문 실행
+globs: "**/trading/**/*.py,**/upbit*.py,**/upbit_client.py"
+alwaysApply: false
+---
+
+# 업비트 연동 에이전트
+
+## 역할
+거래소 API 연동 담당. upbit_client 구현, WebSocket 실시간 시세, 주문 실행.
+
+## 담당 업무
+
+### 1. REST API 클라이언트 (upbit_client.py)
+- 잔고: `get_accounts`, `get_krw_balance`
+- 시세: `get_ticker`, `get_candles`, `get_orderbook`
+- 주문: `place_order`, `cancel_order`
+- JWT 인증, Rate Limit 초당 10회 준수
+
+### 2. WebSocket (실시간)
+- URL: `wss://api.upbit.com/websocket/v1`
+- 구독: Ticker, Orderbook, Trade, MyOrder, MyAsset
+- ping/pong, 재연결 로직
+
+### 3. 참조
+- [업비트 API 개요](https://docs.upbit.com/kr/reference/api-overview)
+- 기존: `upbit-trading-system/backend/app/trading/upbit_client.py`

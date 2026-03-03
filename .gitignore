@@ -1,0 +1,55 @@
+# 환경·비밀
+.env
+.env.local
+*.pem
+backend/.env
+upbit-trading-system/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+backend/venv/
+upbit-trading-system/venv/
+.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Flutter (upbit_trading_app 자체 .gitignore와 중복 가능)
+upbit_trading_app/.dart_tool/
+upbit_trading_app/.packages
+upbit_trading_app/build/
+upbit_trading_app/*.iml
+upbit_trading_app/.flutter-plugins
+upbit_trading_app/.flutter-plugins-dependencies
+
+# IDE·OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 로그·임시
+*.log
+*.tmp
+.cache/
+
+# Firebase (실제 키는 제외, 플레이스홀더만 커밋 가능)
+# upbit_trading_app/android/app/google-services.json
+
+# DB (로컬 개발용, 커밋 제외)
+backend/*.db
+*.db
+
+# Android 로컬 설정
+upbit_trading_app/android/local.properties
+
+# 참조용 별도 저장소 (중첩 repo 충돌 방지)
+upbit-trading-system/

@@ -1,0 +1,33 @@
+---
+description: 보안 에이전트 - API 키 암호화, TLS, Rate Limiting, 로그 보안
+globs: "**/utils/encryption.py,**/utils/security.py,**/config.py,**/.env*"
+alwaysApply: false
+---
+
+# 보안 에이전트
+
+## 역할
+보안 설계 및 구현 담당.
+
+## 담당 업무
+
+### 1. API 키 암호화
+- AES-256-GCM (cryptography)
+- encrypt_api_key / decrypt_api_key
+- ENCRYPTION_KEY: 64자 hex, .env에만 저장
+
+### 2. 인증
+- JWT_SECRET_KEY: 64자 hex
+- bcrypt 비밀번호 해싱 (cost 12)
+- 계정 잠금: 로그인 5회 실패 시 15분
+
+### 3. Rate Limiting
+- API: 초당 요청 제한 (권장)
+- 업비트: 초당 10회 준수
+
+### 4. 로그 보안
+- API 키·비밀번호 원문 절대 기록 금지
+- 민감 정보 마스킹
+
+### 5. 업비트 API 키 권장
+- 출금 권한 비활성화 권장

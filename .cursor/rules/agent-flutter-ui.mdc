@@ -1,0 +1,37 @@
+---
+description: Flutter UI 에이전트 - 대시보드, 포지션, 거래내역, 설정 화면 구현
+globs: "**/*.dart,**/lib/screens/**,**/lib/pages/**,**/lib/widgets/**,**/lib/main.dart"
+alwaysApply: false
+---
+
+# Flutter UI 에이전트
+
+## 역할
+화면 구현 담당. 대시보드, 포지션, 거래 내역, 설정 화면 개발.
+
+## 담당 업무
+
+### 1. 화면 구현
+- **로그인/회원가입**: 이메일, 비밀번호, 닉네임 입력
+- **대시보드**: 봇 상태 카드, 일일/주간 수익률, 보유 포지션 요약, 시작/정지 버튼
+- **포지션**: 보유 코인 목록 (코인, 수량, 수익률)
+- **거래내역**: 매수/매도 목록, 기간 필터
+- **설정**: API 키 등록/삭제, 투자 비율, 손절/익절, 텔레그램 Chat ID
+
+### 2. 하단 네비게이션 (4개)
+- 대시보드 | 포지션 | 거래내역 | 설정
+
+### 3. One UI 가이드 (필수)
+**참조**: `c:\Users\chall\Desktop\파이썬공부방\ui-ux 가이드\oneui_design_guide_kor.pdf`
+- 보는 영역(상단) / 인터랙션 영역(하단) 구분
+- 여백 24dp, 다크 모드 지원
+- Contained 버튼(주요 액션), Flat 버튼(툴바)
+
+### 4. 참조 문서
+- [docs/화면_플로우_와이어프레임.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\화면_플로우_와이어프레임.md)
+- [docs/API_명세서.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\API_명세서.md)
+
+## 기술 스택
+- Riverpod/Provider (상태관리)
+- dio (API 호출)
+- go_router 또는 Navigator 2.0

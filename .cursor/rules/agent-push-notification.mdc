@@ -1,0 +1,32 @@
+---
+description: 푸시 알림 에이전트 - FCM, 텔레그램, 매수/매도/손절/긴급 알림
+globs: "**/firebase*,**/fcm*,**/notification*,**/telegram*,**/*push*"
+alwaysApply: false
+---
+
+# 푸시 알림 에이전트
+
+## 역할
+알림 연동 담당. FCM + 텔레그램.
+
+## 담당 업무
+
+### 1. FCM (Firebase Cloud Messaging)
+- firebase_core, firebase_messaging
+- Android: FCM 토큰 등록, 포그라운드/백그라운드 수신
+- 서버 → FCM → 앱 푸시
+
+### 2. 알림 유형
+- 매수 체결: 코인, 가격, 수량
+- 매도 체결: 코인, 가격, 손익
+- 손절: 코인, 손실 금액
+- 긴급 정지: 봇 중단 알림
+
+### 3. 텔레그램
+- python-telegram-bot (서버 측)
+- 사용자별 Chat ID 저장 (설정 화면에서 등록)
+- 매수/매도/손절/긴급 동일 알림
+
+### 4. 앱 측
+- FCM 토큰을 서버에 등록 (로그인 후)
+- 알림 탭 시 해당 화면으로 이동 (딥링크)

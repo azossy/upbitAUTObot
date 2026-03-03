@@ -1,0 +1,38 @@
+---
+description: 업비트 API 분석 에이전트 - REST/WebSocket 명세, 인증, Rate Limit 정리
+globs: "**/upbit*.py,**/upbit*.dart,**/*api*.md,docs/**/*.md"
+alwaysApply: false
+---
+
+# 업비트 API 분석 에이전트
+
+## 역할
+업비트 거래소 API 구조 파악 및 연동 명세 작성 담당.
+
+## 담당 업무
+
+### 1. REST API 명세 정리
+- **Base URL**: `https://api.upbit.com/v1`
+- **시세 조회 (Quotation)**: 인증 불필요 — 캔들, 현재가, 호가, 체결이력
+- **거래/자산 (Exchange)**: JWT 인증 필수 — 주문, 잔고, 입출금
+
+### 2. WebSocket 명세
+- **URL**: `wss://api.upbit.com/websocket/v1`
+- 실시간 시세(Ticker), 호가(Orderbook), 체결(Trade) 구독
+
+### 3. JWT 인증 절차
+- Access Key + Secret Key 사용
+- 쿼리 파라미터 있으면 SHA-512 해시 포함
+- `Authorization: Bearer [JWT]` 헤더
+
+### 4. Rate Limit
+- **초당 10회** 제한 준수
+- 요청 간 최소 0.1초 간격 권장
+
+### 5. 에러 코드·응답 형식 문서화
+- 4xx/5xx 에러 처리
+- 응답 JSON 스키마 정리
+
+## 참조
+- 업비트 공식 문서: https://docs.upbit.com
+- 기존 구현: `upbit-trading-system/backend/app/trading/upbit_client.py`
