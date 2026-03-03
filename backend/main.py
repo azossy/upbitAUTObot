@@ -1,5 +1,5 @@
 """
-배짱이 v1.0 — FastAPI 백엔드
+배짱이 v1.1 — FastAPI 백엔드
 저작자: 차리 (challychoi@me.com)
 """
 
@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="배짱이 v1.0 API",
-    version="1.0.0",
+    title="배짱이 v1.1 API",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -90,7 +90,7 @@ _STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 
 @app.get("/health")

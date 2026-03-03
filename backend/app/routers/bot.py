@@ -69,7 +69,7 @@ async def start_bot(
     db: AsyncSession = Depends(get_db),
 ):
     bot = await get_or_create_bot(user, db)
-    result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.is_active))
+    result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.is_active == True))
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="API 키를 먼저 등록하세요")
     tasks = getattr(request.app.state, "trading_tasks", {})
@@ -228,7 +228,7 @@ async def get_trades(
     db: AsyncSession = Depends(get_db),
     days: int = Query(30, ge=1, le=365, description="조회 기간(일). 7, 30, 90 등"),
 ):
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     result = await db.execute(
         select(Trade)
         .where(Trade.user_id == user.id, Trade.created_at >= since)
@@ -255,7 +255,7 @@ async def export_trades_csv(
     days: int = Query(30, ge=1, le=365, description="내보내기 기간(일). 7, 30, 90 등"),
 ):
     """거래내역 CSV 내보내기. UTF-8 BOM. 헤더: 날짜,코인,구분,가격,수량,금액,실현손익"""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     result = await db.execute(
         select(Trade)
         .where(Trade.user_id == user.id, Trade.created_at >= since)

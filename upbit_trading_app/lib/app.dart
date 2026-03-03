@@ -59,10 +59,15 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
     return GoRouter(
       initialLocation: '/login',
       redirect: (context, state) {
-        final loggedIn = ref.read(authStateProvider).isLoggedIn;
-        final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
-        if (!isAuthRoute && !loggedIn) return '/login';
-        if (isAuthRoute && loggedIn) return '/';
+        try {
+          final loggedIn = ref.read(authStateProvider).isLoggedIn;
+          final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+          if (!isAuthRoute && !loggedIn) return '/login';
+          if (isAuthRoute && loggedIn) return '/';
+        } catch (e, st) {
+          debugPrint('[Router] redirect error: $e $st');
+          return '/login';
+        }
         return null;
       },
       routes: [
@@ -103,6 +108,48 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: _router,
+      builder: (context, child) {
+        if (child == null) return const _FallbackScaffold();
+        return child;
+      },
+    );
+  }
+}
+
+/// 라우터가 화면을 그리지 못할 때 표시 (빈 회색 화면 방지, One UI 스타일)
+class _FallbackScaffold extends StatelessWidget {
+  const _FallbackScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.surfaceLight,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.marginHorizontal),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '배짱이',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '로딩 중…',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

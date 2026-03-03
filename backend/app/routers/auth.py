@@ -1,6 +1,6 @@
 """인증 API"""
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import ceil
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -64,8 +64,10 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호 오류")
-    if user.locked_until and user.locked_until > datetime.utcnow():
-        remaining = max(0, ceil((user.locked_until - datetime.utcnow()).total_seconds() / 60))
+    # DB는 naive UTC 저장 → 비교·설정 시 naive로 통일 (Python 3.12+ utcnow 대체)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    if user.locked_until and user.locked_until > now_utc:
+        remaining = max(0, ceil((user.locked_until - now_utc).total_seconds() / 60))
         return JSONResponse(
             status_code=403,
             content={
@@ -76,7 +78,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not verify_password(req.password, user.password_hash):
         user.login_fail_count = (user.login_fail_count or 0) + 1
         if user.login_fail_count >= MAX_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
+            user.locked_until = now_utc + timedelta(minutes=LOCKOUT_MINUTES)
         await db.commit()
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호 오류")
     user.login_fail_count = 0

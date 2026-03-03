@@ -1,4 +1,4 @@
-# 배짱이 앱 아이콘 (v1.0)
+# 배짱이 앱 아이콘 (v1.1)
 
 - **소스**: `app_icon_1024.png` (1024×1024) — 베짱이 정면 얼굴(더듬이 점 없음), 둥근 진한 파란 배경
 - **디자인 기준**: [Windows 앱 아이콘 디자인 지침](https://learn.microsoft.com/ko-kr/windows/apps/design/style/iconography/app-icon-design)

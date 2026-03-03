@@ -1,4 +1,4 @@
-# 배짱이 v1.0 — Jetson Orin Nano + Tailscale 서버 세팅
+# 배짱이 v1.1 — Jetson Orin Nano + Tailscale 서버 세팅
 
 **저작자**: 차리 (challychoi@me.com)
 
@@ -167,7 +167,7 @@ sudo nano /etc/systemd/system/upbit-backend.service
 
 ```ini
 [Unit]
-Description=배짱이 v1.0 Backend API
+Description=배짱이 v1.1 Backend API
 After=network-online.target
 Wants=network-online.target
 

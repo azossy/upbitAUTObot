@@ -24,6 +24,7 @@ build/
 upbit_trading_app/.dart_tool/
 upbit_trading_app/.packages
 upbit_trading_app/build/
+upbit_trading_app/android/.gradle/
 upbit_trading_app/*.iml
 upbit_trading_app/.flutter-plugins
 upbit_trading_app/.flutter-plugins-dependencies
@@ -53,3 +54,6 @@ upbit_trading_app/android/local.properties
 
 # 참조용 별도 저장소 (중첩 repo 충돌 방지)
 upbit-trading-system/
+
+# 에이전트 공용 화이트보드 (로컬 전용, GitHub 미배포)
+123.txt

@@ -1,4 +1,4 @@
-# 배짱이 v1.0 — UI/UX 가이드 적용 (One UI 기준)
+# 배짱이 v1.1 — UI/UX 가이드 적용 (One UI 기준)
 
 **저작자**: 차리 (challychoi@me.com)  
 **참조 문서**: `c:\Users\chall\Desktop\파이썬공부방\ui-ux 가이드\oneui_design_guide_kor.pdf`  

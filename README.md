@@ -14,7 +14,7 @@
 ### 1단계: Android 앱 받기
 
 1. **[Releases](https://github.com/azossy/upbitAUTObot/releases)** 페이지로 갑니다.
-2. 가장 위에 있는 **최신 버전**(예: v1.0.0)을 클릭합니다.
+2. 가장 위에 있는 **최신 버전**(예: v1.1.0)을 클릭합니다.
 3. **Assets** 안에 있는 **app-release.apk** 를 눌러 다운로드합니다.
 4. 다운로드한 APK 파일을 **휴대폰으로 옮깁니다.** (USB, 클라우드, 메신저 등 편한 방법으로)
 5. 휴대폰에서 APK 파일을 탭해 **설치**합니다.  
@@ -118,7 +118,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 👉 **아주 자세한 설명**(왜 다중 확인을 쓰는지, 단계별 조건, 예시 시나리오, FAQ)은 **[docs/트레이딩_로직_상세_가이드.md](docs/트레이딩_로직_상세_가이드.md)** 에 길게 친절하게 적어 두었습니다. 처음 보시는 분도 차근차근 읽을 수 있습니다.
 
-※ v1.0 서버는 **검증 모드**(잔고 조회·API 연동 확인)까지 구현되어 있으며, 위 전략에 따른 실제 주문 로직은 추후 버전에서 적용될 예정입니다.
+※ v1.1 서버는 **검증 모드**(잔고 조회·API 연동 확인)까지 구현되어 있으며, 위 전략에 따른 실제 주문 로직은 추후 버전에서 적용될 예정입니다.
 
 ---
 
@@ -159,7 +159,7 @@ cp .env.example .env
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.0.0"}` 이 나오면 정상입니다.  
+브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.1.0"}` 이 나오면 정상입니다.  
 상시 실행은 [docs/배포_가이드.md](docs/배포_가이드.md) 의 systemd 예시를 참고하세요.
 
 ### 3. Android 앱 — APK 받기 또는 직접 빌드
@@ -176,8 +176,8 @@ APK를 직접 컴파일해서 GitHub에 올리려면:
    **Mac/Linux**: `cd upbit_trading_app && flutter pub get && flutter build apk --release`
 3. 빌드가 끝나면 `upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk` 가 생성됩니다.
 4. 이 APK를 **GitHub Release**에 올리려면 (GitHub CLI 설치 후):  
-   `gh release upload v1.0.0 upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk --repo azossy/upbitAUTObot --clobber`  
-   (버전 태그 `v1.0.0`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.0.1 --title "배짱이 v1.0.1"` 로 생성한 뒤 upload 하세요.)
+   `gh release upload v1.1.0 upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk --repo azossy/upbitAUTObot --clobber`  
+   (버전 태그 `v1.1.0`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.1.0 --title "배짱이 v1.1.0"` 로 생성한 뒤 upload 하세요.)
 
 자세한 절차는 [docs/APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) 를 참고하세요.
 
@@ -237,4 +237,4 @@ upbitAUTObot/
 ## 📌 라이선스·저작자
 
 **저작자**: 차리 (challychoi@me.com)  
-배짱이 v1.0 — 업비트 현물 자동매매 앱 및 백엔드.
+배짱이 v1.1 — 업비트 현물 자동매매 앱 및 백엔드.
