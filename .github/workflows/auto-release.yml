@@ -10,6 +10,8 @@ on:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # Release 생성·업로드에 필요 (403 방지)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
