@@ -6,6 +6,7 @@ name: Build Release APK
 on:
   release:
     types: [published]
+  workflow_dispatch:   # Actions 탭에서 "Run workflow" 버튼으로 수동 실행 가능
 
 jobs:
   build:
@@ -44,8 +45,16 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload APK to Release
+        if: github.event.release.tag_name != ''
         run: |
           cp upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
           gh release upload "${{ github.event.release.tag_name }}" app-release.apk --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK artifact (수동 실행 시)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk
