@@ -1,4 +1,4 @@
-/// FCM 푸시 알림 — 토큰 발급, 서버 등록, 포그라운드/백그라운드 처리
+// FCM 푸시 알림 — 토큰 발급, 서버 등록, 포그라운드/백그라운드 처리
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -22,7 +22,7 @@ class NotificationService {
 
   NotificationService(this._api);
 
-  /// Firebase 초기화 및 FCM 설정
+  /// Firebase 초기화 및 FCM 설정 (실패 시에도 앱은 정상 동작)
   static Future<bool> initialize() async {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

@@ -189,7 +189,7 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                             if (_uploadingAvatar)
                               Positioned.fill(
                                 child: Container(
-                                  decoration: BoxDecoration(
+                                    decoration: const BoxDecoration(
                                     color: Colors.black45,
                                     shape: BoxShape.circle,
                                   ),

@@ -14,11 +14,9 @@ import 'presentation/screens/my_screen.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/locale_provider.dart';
-import 'services/notification_service.dart';
 import 'services/auth_provider.dart';
 import 'services/api_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'constants/app_version.dart';
 
 class UpbitTradingApp extends ConsumerStatefulWidget {
   const UpbitTradingApp({super.key});

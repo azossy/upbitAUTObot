@@ -17,8 +17,10 @@ GitHub Actions는 빌드에 3~5분 걸리므로, **직접 컴파일해서 올리
 
 ### 방법 A: 배치 파일 + 수동 업로드 (Windows)
 
-1. `upbit_trading_app` 폴더에서 **build_apk.bat** 더블클릭 실행.  
-   (Flutter 경로가 `C:\flutter\bin\flutter.bat` 이 아니면 해당 파일 안의 `set FLUTTER=...` 를 수정하세요.)
+- **한글 경로**(예: `파이썬공부방\업비트 자동매매`)에 프로젝트가 있으면 일반 **build_apk.bat** 은 AOT 빌드에서 실패할 수 있습니다.  
+  → **build_apk_로컬.bat** 을 사용하세요. (subst로 영문 경로에서 빌드해 한글 경로 이슈를 피합니다.)
+1. `upbit_trading_app` 폴더에서 **build_apk_로컬.bat** 더블클릭 실행.  
+   (Flutter 경로가 `C:\flutter\bin\flutter.bat` 이 아니면 파일 안의 `set FLUTTER=...` 를 수정하세요.)
 2. 빌드가 끝나면 `upbit_trading_app\build\app\outputs\flutter-apk\app-release.apk` 가 생성됩니다.
 3. **GitHub CLI(gh)** 가 설치되어 있다면, 프로젝트 루트에서:
    ```powershell

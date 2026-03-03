@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#0381FE</color>
+    <!-- 투명 배경: 런처가 원형/스쿼클로 표시 -->
+    <color name="ic_launcher_background">#00000000</color>
 </resources>

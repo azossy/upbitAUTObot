@@ -115,8 +115,8 @@ class AppTheme {
         elevation: 8,
         height: 65,
         indicatorColor: primary.withOpacity(0.2),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -223,8 +223,8 @@ class AppTheme {
         height: 65,
         backgroundColor: const Color(0xFF1C1C1E),
         indicatorColor: controlActive.withOpacity(0.25),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,

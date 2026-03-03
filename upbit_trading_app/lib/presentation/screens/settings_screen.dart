@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_provider.dart';
-import '../../services/biometric_service.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/locale_provider.dart';
 
@@ -60,16 +59,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final api = ref.read(apiServiceProvider);
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString(kApiBaseUrlKey)?.trim() ?? ApiService.defaultBaseUrl;
-    if (mounted) setState(() => _apiBaseUrlController.text = savedUrl);
+    if (mounted) {
+      setState(() => _apiBaseUrlController.text = savedUrl);
+    }
     final biometric = ref.read(biometricServiceProvider);
     final bioEnabled = await biometric.isBiometricEnabled();
     final bioAvailable = await biometric.canCheckBiometrics();
-    if (mounted) setState(() {
-      _biometricEnabled = bioEnabled;
-      _biometricAvailable = bioAvailable;
-    });
+    if (mounted) {
+      setState(() {
+        _biometricEnabled = bioEnabled;
+        _biometricAvailable = bioAvailable;
+      });
+    }
     final connected = await api.healthCheck();
-    if (mounted) setState(() => _serverConnected = connected);
+    if (mounted) {
+      setState(() => _serverConnected = connected);
+    }
     List<dynamic> keys = [];
     Map<String, dynamic> config = {};
     try {

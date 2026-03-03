@@ -172,7 +172,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 APK를 직접 컴파일해서 GitHub에 올리려면:
 
 1. **Flutter**와 **Android SDK**가 설치된 PC에서 프로젝트 루트로 이동합니다.
-2. **Windows**: `upbit_trading_app\build_apk.bat` 더블클릭 또는 터미널에서 실행.  
+2. **Windows**: 프로젝트가 한글 경로에 있으면 `upbit_trading_app\build_apk_로컬.bat` 사용(권장). 그 외에는 `build_apk.bat` 실행.  
    **Mac/Linux**: `cd upbit_trading_app && flutter pub get && flutter build apk --release`
 3. 빌드가 끝나면 `upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk` 가 생성됩니다.
 4. 이 APK를 **GitHub Release**에 올리려면 (GitHub CLI 설치 후):  

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import '../../services/auth_provider.dart';
-import '../../services/biometric_service.dart';
 import '../../theme/app_theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -80,16 +79,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final googleSignIn = GoogleSignIn();
       final account = await googleSignIn.signIn();
       if (account == null) {
-        if (mounted) setState(() => _loading = false);
+        if (mounted) {
+          setState(() => _loading = false);
+        }
         return;
       }
       final auth = await account.authentication;
       final idToken = auth.idToken;
       if (idToken == null) {
-        if (mounted) setState(() {
-          _loading = false;
-          _error = '구글 인증 정보를 가져오지 못했습니다.';
-        });
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = '구글 인증 정보를 가져오지 못했습니다.';
+          });
+        }
         return;
       }
       final errorMsg = await ref.read(authStateProvider.notifier).loginGoogle(idToken);

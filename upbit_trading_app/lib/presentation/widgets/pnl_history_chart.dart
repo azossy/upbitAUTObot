@@ -56,7 +56,7 @@ class _PnlHistoryChartState extends State<PnlHistoryChart> {
     }
 
     final theme = Theme.of(context);
-    final positiveColor = AppTheme.primary;
+    const positiveColor = AppTheme.primary;
     final negativeColor = Colors.red.shade400;
     final labelColor = theme.colorScheme.onSurface.withOpacity(0.7);
 

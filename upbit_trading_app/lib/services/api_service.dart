@@ -72,7 +72,9 @@ class ApiService {
   /// SharedPreferences에서 API 서버 주소 로드 후 적용. 앱 기동 시 한 번 호출.
   static String _normalizeBaseUrl(String url) {
     var u = url.trim();
-    while (u.endsWith('/') && u.length > 1) u = u.substring(0, u.length - 1);
+    while (u.endsWith('/') && u.length > 1) {
+      u = u.substring(0, u.length - 1);
+    }
     return u.isEmpty ? defaultBaseUrl : u;
   }
 

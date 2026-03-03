@@ -31,7 +31,7 @@ class _PnlChartState extends State<PnlChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final positiveColor = AppTheme.primary;
+    const positiveColor = AppTheme.primary;
     final negativeColor = Colors.red.shade400;
     final labelColor = theme.colorScheme.onSurface.withOpacity(0.7);
 
@@ -44,7 +44,7 @@ class _PnlChartState extends State<PnlChart> {
     if (maxY <= minY) {
       maxY = minY + 10;
     }
-    final padding = 2.0;
+    const padding = 2.0;
 
     return Card(
       child: Padding(
