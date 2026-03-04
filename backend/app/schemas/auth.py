@@ -92,6 +92,7 @@ class BotStatusResponse(BaseModel):
     win_rate: float
     daily_pnl: float
     weekly_pnl: float
+    session_start_krw: Optional[float] = None  # 봇 시작 시점 KRW (수익률 계산용)
 
 
 class ApiKeyCreateRequest(BaseModel):

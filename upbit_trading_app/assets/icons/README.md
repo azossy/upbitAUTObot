@@ -1,14 +1,8 @@
-# 배짱이 앱 아이콘 (v1.1)
+# 배짱이 앱 아이콘
 
-- **소스**: `app_icon_1024.png` (1024×1024) — 미니멀 상승/트렌드 실루엣, Primary #0381FE 배경 (2026-03-04 교체)
-- **디자인 기준**: docs/UI_UX_가이드_적용.md, [Windows 앱 아이콘 디자인 지침](https://learn.microsoft.com/ko-kr/windows/apps/design/style/iconography/app-icon-design)
-
-## 적용된 가이드라인
-
-- **은유**: 상승 추세(차트/화살) → 트레이딩·성장을 한 가지 요소로 표현
-- **형태**: 단순한 실루엣, 둥근 모서리, 작은 크기에서도 읽기 쉬움
-- **색상**: 앱 프라이머리 #0381FE, 미묘한 그라데이션(좌상단 밝음)
-- **대비**: 밝은/어두운 배경 모두에서 구분 가능하도록 구성
+- **소스**: `app_icon_1024.png` (1024×1024) — **오렌지 배경(#FF6B00) + 흰색 한글 "배짱이"** 단순 텍스트 아이콘 (캐릭터 없음)
+- **런처 배경**: `android/.../values/colors.xml` → `ic_launcher_background` #FF6B00
+- **디자인 기준**: docs/UI_UX_가이드_적용.md
 
 ## 아이콘 생성 (Android / iOS / Web)
 

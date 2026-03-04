@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 /// One UI Design Guidelines 기반 테마
-/// - Primary #0381fe, Primary dark #0072de
+/// - Primary 오렌지 #FF6B00 (아이콘·강조)
+/// - Primary dark #E65100
 /// - 포커스 블록 둥근 모서리 (20~26dp)
 /// - 좌우 여백 24dp
 class AppTheme {
-  static const Color primary = Color(0xFF0381FE);
-  static const Color primaryDark = Color(0xFF0072DE);
-  static const Color controlActive = Color(0xFF3E91FF);
+  static const Color primary = Color(0xFFFF6B00);
+  static const Color primaryDark = Color(0xFFE65100);
+  static const Color controlActive = Color(0xFFFF8F00);
   static const Color surfaceLight = Color(0xFFFAFAFA);
   static const Color surfaceDark = Color(0xFF080808);
 
@@ -15,7 +16,8 @@ class AppTheme {
   static const double radiusFocus = 20;
   static const double radiusCard = 20;
   static const double radiusInput = 12;
-  static const double marginHorizontal = 24;
+  /// 좌우 여백 (기존 24의 80% = 19.2, 화면이 넓어 보이도록)
+  static const double marginHorizontal = 19.2;
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -155,6 +157,7 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: controlActive,
+        primaryContainer: primaryDark,
         brightness: Brightness.dark,
         surface: surfaceDark,
       ).copyWith(

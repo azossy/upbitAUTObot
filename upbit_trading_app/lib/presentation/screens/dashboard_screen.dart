@@ -9,6 +9,11 @@ import '../../providers/locale_provider.dart';
 import '../widgets/pnl_chart.dart';
 import '../widgets/pnl_history_chart.dart';
 
+void _goToLogin(BuildContext context, WidgetRef ref) {
+  ref.read(authStateProvider.notifier).logout();
+  context.go('/login');
+}
+
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -17,6 +22,17 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
+
+/// 한국식 천 단위 콤마 (예: 999,999,999)
+String _formatKrw(num value) {
+  final s = value.toInt().abs().toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    buf.write(s[i]);
+  }
+  return buf.toString();
+}
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Map<String, dynamic>? _status;
@@ -94,6 +110,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  String _balanceMessage(String error) {
+    if (error.contains('등록') || error.contains('API 키를')) {
+      return '아직 upbit API키 값이 등록되지 않았습니다';
+    }
+    if (error.contains('복호화') || error.contains('틀렸') || error.contains('invalid') || error.contains('401') || error.contains('Unauthorized')) {
+      return '키값이 틀렸습니다';
+    }
+    return error;
+  }
+
+  Widget _buildTotalReturnChip(BuildContext context) {
+    final krw = (_balance != null && _balance!['error'] == null) ? ((_balance!['krw'] as num?) ?? 0).toDouble() : 0.0;
+    final startKrw = (_status?['session_start_krw'] as num?)?.toDouble();
+    double pct = 0.0;
+    if (startKrw != null && startKrw > 0) {
+      pct = ((krw - startKrw) / startKrw) * 100;
+    }
+    final isPositive = pct >= 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isPositive ? Colors.green : Colors.red).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2)}%',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleBot() async {
     try {
       final api = ref.read(apiServiceProvider);
@@ -151,27 +202,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (_error != null) ...[
-                Card(
-                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: isAuthRequiredMessage(_error)
+                        ? () => _goToLogin(context, ref)
+                        : null,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                    child: Card(
+                      color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
-                            const SizedBox(width: 12),
-                            Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                            Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (isAuthRequiredMessage(_error))
+                              FilledButton.icon(
+                                onPressed: () => _goToLogin(context, ref),
+                                icon: const Icon(Icons.login, size: 18),
+                                label: const Text('로그인 화면으로'),
+                              )
+                            else
+                              TextButton.icon(
+                                onPressed: () { setState(() => _error = null); _fetch(); },
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: const Text('다시 시도'),
+                              ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () { setState(() => _error = null); _fetch(); },
-                          icon: const Icon(Icons.refresh, size: 18),
-                          label: const Text('다시 시도'),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -185,20 +252,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Icon(Icons.account_balance_wallet_outlined, color: Theme.of(context).colorScheme.primary, size: 28),
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('원화 잔고', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
-                            const SizedBox(height: 4),
-                            Text(
-                              _balance!['error'] != null
-                                  ? '—'
-                                  : '${((_balance!['krw'] as num?) ?? 0).toStringAsFixed(0)}원',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
-                            ),
-                            if (_balance!['error'] != null && (_balance!['error'] as String).isNotEmpty)
-                              Text('조회 실패', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error)),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('원화 잔고', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                                  if (_botRunning && _status != null) ...[
+                                    const SizedBox(width: 12),
+                                    _buildTotalReturnChip(context),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _balance!['error'] != null
+                                    ? '0'
+                                    : '${_formatKrw((_balance!['krw'] as num?) ?? 0)}원',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              if (_balance!['error'] != null && (_balance!['error'] as String).isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    _balanceMessage(_balance!['error'] as String),
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -223,6 +310,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       : Column(
                           children: _tickerData.map((t) {
                             final market = t['market'] as String? ?? '-';
+                            final symbol = market.replaceFirst('KRW-', '');
                             final price = (t['trade_price'] as num?)?.toDouble() ?? 0.0;
                             final rate = (t['signed_change_rate'] as num?)?.toDouble() ?? 0.0;
                             final change = t['change'] as String?;
@@ -233,14 +321,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    market.replaceFirst('KRW-', ''),
+                                    symbol,
                                     style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                                   ),
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '${price.toStringAsFixed(0)}원',
+                                        '${_formatKrw(price)}원',
                                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                                       ),
                                       Text(

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- One UI 가이드 Primary #0381FE (앱 런처·adaptive 아이콘 배경) -->
-    <color name="ic_launcher_background">#0381FE</color>
+    <!-- 앱 런처·adaptive 아이콘 배경 (오렌지) -->
+    <color name="ic_launcher_background">#FF6B00</color>
 </resources>

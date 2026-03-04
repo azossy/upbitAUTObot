@@ -7,6 +7,11 @@ import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/locale_provider.dart';
 
+void _goToLoginPositions(BuildContext context, WidgetRef ref) {
+  ref.read(authStateProvider.notifier).logout();
+  context.go('/login');
+}
+
 class PositionsScreen extends ConsumerStatefulWidget {
   const PositionsScreen({super.key});
 
@@ -149,27 +154,41 @@ class _PositionsScreenState extends ConsumerState<PositionsScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (_error != null) ...[
-                      Card(
-                        color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: isAuthRequiredMessage(_error) ? () => _goToLoginPositions(context, ref) : null,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                          child: Card(
+                            color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (isAuthRequiredMessage(_error))
+                                    FilledButton.icon(
+                                      onPressed: () => _goToLoginPositions(context, ref),
+                                      icon: const Icon(Icons.login, size: 18),
+                                      label: const Text('로그인 화면으로'),
+                                    )
+                                  else
+                                    TextButton.icon(
+                                      onPressed: () { setState(() => _error = null); _fetch(); },
+                                      icon: const Icon(Icons.refresh, size: 18),
+                                      label: const Text('다시 시도'),
+                                    ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              TextButton.icon(
-                                onPressed: () { setState(() => _error = null); _fetch(); },
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: const Text('다시 시도'),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),

@@ -59,6 +59,7 @@ async def get_status(
         win_rate=round(win_rate, 1),
         daily_pnl=bot.daily_pnl,
         weekly_pnl=bot.weekly_pnl,
+        session_start_krw=getattr(bot, "session_start_krw", None),
     )
 
 
@@ -70,12 +71,26 @@ async def start_bot(
 ):
     bot = await get_or_create_bot(user, db)
     result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.is_active == True))
-    if not result.scalar_one_or_none():
+    api_key = result.scalar_one_or_none()
+    if not api_key:
         raise HTTPException(status_code=400, detail="API 키를 먼저 등록하세요")
     tasks = getattr(request.app.state, "trading_tasks", {})
     if user.id in tasks and not tasks[user.id].done():
         raise HTTPException(status_code=400, detail="이미 봇이 실행 중입니다")
+    session_start_krw = None
+    try:
+        access_key = decrypt_api_key(api_key.encrypted_api_key)
+        secret_key = decrypt_api_key(api_key.encrypted_api_secret)
+        client = UpbitClient(access_key, secret_key)
+        accounts = await client.get_accounts()
+        for acc in accounts:
+            if acc.get("currency") == "KRW":
+                session_start_krw = float(acc.get("balance", 0) or 0)
+                break
+    except Exception:
+        pass
     bot.status = BotStatus.RUNNING
+    bot.session_start_krw = session_start_krw
     await db.commit()
     task = asyncio.create_task(trading_loop(request.app, user.id))
     request.app.state.trading_tasks[user.id] = task

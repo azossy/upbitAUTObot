@@ -469,16 +469,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Card(
-                color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
-                    ],
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: isAuthRequiredMessage(_error) ? () { ref.read(authStateProvider.notifier).logout(); context.go('/login'); } : null,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                            ],
+                          ),
+                          if (isAuthRequiredMessage(_error)) ...[
+                            const SizedBox(height: 12),
+                            FilledButton.icon(
+                              onPressed: () { ref.read(authStateProvider.notifier).logout(); context.go('/login'); },
+                              icon: const Icon(Icons.login, size: 18),
+                              label: const Text('로그인 화면으로'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

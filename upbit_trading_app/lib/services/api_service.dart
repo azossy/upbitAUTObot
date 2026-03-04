@@ -4,6 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// SharedPreferences 키: API 서버 주소
 const String kApiBaseUrlKey = 'api_base_url';
 
+/// 401 등으로 반환된 "인증이 필요합니다. 다시 로그인해 주세요." 여부
+bool isAuthRequiredMessage(String? message) {
+  return message != null &&
+      (message.contains('인증이 필요') || message.contains('다시 로그인'));
+}
+
 /// 4xx/5xx·타임아웃·연결 실패 시 사용자에게 보여줄 한글 메시지 반환 (크래시 없이 복구 가능하도록)
 String getApiErrorMessage(dynamic e, {String fallback = '오류가 발생했습니다.'}) {
   if (e is DioException) {

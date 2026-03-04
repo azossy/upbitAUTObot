@@ -47,3 +47,7 @@ async def init_db():
                 await conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {defn}"))
             except Exception:
                 pass
+        try:
+            await conn.execute(text("ALTER TABLE bots ADD COLUMN session_start_krw REAL"))
+        except Exception:
+            pass
