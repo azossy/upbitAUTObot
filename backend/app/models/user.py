@@ -28,6 +28,7 @@ class User(Base):
     kakao_id = Column(String(128), nullable=True, unique=True, index=True)
     login_fail_count = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -41,6 +41,7 @@ async def init_db():
             ("google_id", "VARCHAR(128)"),
             ("kakao_id", "VARCHAR(128)"),
             ("fcm_token", "VARCHAR(512)"),
+            ("last_login_at", "DATETIME"),
         ]:
             try:
                 await conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {defn}"))

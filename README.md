@@ -190,6 +190,50 @@ APK를 직접 컴파일해서 GitHub에 올리려면:
 
 ---
 
+## 🖥️ baejjangi CLI (서버 운영 도구)
+
+서버에서 설정·테스트·서비스 제어를 할 수 있는 **CLI**입니다. `backend` 디렉터리에서 실행합니다.
+
+### 실행 방법
+
+```bash
+cd backend
+python baejjangi.py --help
+```
+
+리눅스(Jetson 등)에서 **파이썬 없이** 단일 실행 파일로 쓰려면 같은 서버에서 한 번 빌드합니다.
+
+```bash
+cd backend
+pip install pyinstaller
+python build_baejjangi.py
+# → dist/baejjangi (리눅스) 또는 dist/baejjangi.exe (Windows)
+./dist/baejjangi --help
+```
+
+### 지원 CLI 명령 요약
+
+| 구분 | 명령 | 설명 |
+|------|------|------|
+| **공통** | `baejjangi` / `baejjangi --help` | 사용법 안내 |
+| | `baejjangi --version` | 버전 표시 |
+| | `baejjangi --env-file /path/to/.env` | .env 경로 지정 (다른 명령과 함께 사용) |
+| **설정** | `baejjangi set telegram` | 텔레그램 봇 토큰·Chat ID 문답 입력 후 .env 반영 |
+| | `baejjangi set email` | SMTP·발신자·인증 유효분 문답 입력 후 .env 반영 |
+| **테스트** | `baejjangi test mail` | SMTP로 테스트 메일 1통 발송 |
+| | `baejjangi test telegram` | 텔레그램 테스트 메시지 1통 발송 |
+| | `baejjangi test kakao` | 카카오 로그인 설정(KAKAO_REST_API_KEY) 확인 |
+| **확인** | `baejjangi config` | 현재 .env 설정 요약 (민감정보 마스킹) |
+| | `baejjangi health` | 서버 /health 체크 (기본 http://127.0.0.1:8000, `--url` 로 변경 가능) |
+| **리눅스 전용** | `baejjangi --stop` | systemd 서비스 `upbit-backend` 중지 |
+| | `baejjangi --restart` | systemd 서비스 `upbit-backend` 재시작 |
+| | `baejjangi --status` | systemd 서비스 `upbit-backend` 상태 출력 |
+| **DB 조회** | `baejjangi --user` | 앱 사용자 목록 + 최근 접속일 표로 출력 (.env의 DATABASE_URL 사용) |
+
+상세 사용법·빌드 절차는 **[backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md)** 를 참고하세요.
+
+---
+
 ## 📁 프로젝트 구조
 
 ```
@@ -201,6 +245,9 @@ upbitAUTObot/
 │   │   ├── services/     # 알림(텔레그램, FCM) 등
 │   │   └── ...
 │   ├── main.py
+│   ├── baejjangi.py      # 서버 운영 CLI (설정·테스트·서비스 제어·사용자 목록)
+│   ├── build_baejjangi.py # PyInstaller 빌드 스크립트 (단일 실행 파일)
+│   ├── README_BAEJJANGI.md # baejjangi CLI 상세 사용법
 │   ├── requirements.txt
 │   └── .env.example
 ├── upbit_trading_app/    # Flutter Android 앱
@@ -228,6 +275,7 @@ upbitAUTObot/
 | [진입_매각_다중확인_로직.md](docs/진입_매각_다중확인_로직.md) | 진입/매각 2~3단계 확인 설계 요약 |
 | [APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) | APK 직접 빌드·GitHub Release 업로드 방법 |
 | [API_명세서.md](docs/API_명세서.md) | 백엔드 API 요약 |
+| [backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md) | **baejjangi CLI** 상세 사용법·빌드·서비스 제어 |
 
 ---
 

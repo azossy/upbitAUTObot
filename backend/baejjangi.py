@@ -5,12 +5,15 @@
 메일/텔레그램/카카오 설정 테스트: baejjangi test (mail|telegram|kakao)
 실행: baejjangi [--help] | baejjangi set (telegram|email) | baejjangi test (mail|telegram|kakao)
       컴파일 후: ./baejjangi 또는 baejjangi.exe
+리눅스: --stop, --restart, --status (systemd upbit-backend), --user (앱 사용자 목록+최근 접속일)
 """
 from __future__ import annotations
 
 import argparse
+import asyncio
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -234,6 +237,130 @@ def cmd_health(base_url: str) -> int:
         return 1
 
 
+SYSTEMD_SERVICE = "upbit-backend"
+
+
+def _is_linux() -> bool:
+    return sys.platform == "linux"
+
+
+def cmd_systemd_stop() -> int:
+    """systemd upbit-backend 서비스 중지 (리눅스에서만)."""
+    if not _is_linux():
+        print("--stop은 리눅스에서만 지원됩니다.")
+        return 1
+    try:
+        subprocess.run(
+            ["systemctl", "stop", SYSTEMD_SERVICE],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print(f"{SYSTEMD_SERVICE} 서비스를 중지했습니다.")
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"실패: {e.stderr or str(e)}")
+        return 1
+    except FileNotFoundError:
+        print("systemctl을 찾을 수 없습니다. 리눅스 환경인지 확인하세요.")
+        return 1
+
+
+def cmd_systemd_restart() -> int:
+    """systemd upbit-backend 서비스 재시작 (리눅스에서만)."""
+    if not _is_linux():
+        print("--restart는 리눅스에서만 지원됩니다.")
+        return 1
+    try:
+        subprocess.run(
+            ["systemctl", "restart", SYSTEMD_SERVICE],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print(f"{SYSTEMD_SERVICE} 서비스를 재시작했습니다.")
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"실패: {e.stderr or str(e)}")
+        return 1
+    except FileNotFoundError:
+        print("systemctl을 찾을 수 없습니다. 리눅스 환경인지 확인하세요.")
+        return 1
+
+
+def cmd_systemd_status() -> int:
+    """systemd upbit-backend 서비스 상태 출력 (리눅스에서만)."""
+    if not _is_linux():
+        print("--status는 리눅스에서만 지원됩니다.")
+        return 1
+    try:
+        r = subprocess.run(
+            ["systemctl", "status", SYSTEMD_SERVICE],
+            capture_output=True,
+            text=True,
+        )
+        print(r.stdout or r.stderr or "")
+        return 0 if r.returncode == 0 else 1
+    except FileNotFoundError:
+        print("systemctl을 찾을 수 없습니다. 리눅스 환경인지 확인하세요.")
+        return 1
+
+
+async def _cmd_user_async(env_path: Path) -> int:
+    """앱 사용자 목록 + 최근 접속일 DB 조회 (비동기)."""
+    _load_env_into_os(env_path)
+    # DATABASE_URL이 상대 경로(./upbit_trading.db)면 backend 디렉터리 기준으로 절대 경로로 설정
+    db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./upbit_trading.db")
+    if "sqlite" in db_url and ("/./upbit_trading.db" in db_url or db_url.rstrip("/").endswith("/./upbit_trading.db")):
+        db_path = _BACKEND_DIR / "upbit_trading.db"
+        os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
+    try:
+        from sqlalchemy import select
+        from app.database import AsyncSessionLocal
+        from app.models.user import User
+    except ImportError as e:
+        print(f"DB 조회에 필요한 모듈을 불러올 수 없습니다: {e}")
+        return 1
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(User.id, User.email, User.nickname, User.last_login_at).order_by(User.id)
+            )
+            rows = result.all()
+    except Exception as e:
+        print(f"DB 조회 실패: {e}")
+        return 1
+    if not rows:
+        print("등록된 사용자가 없습니다.")
+        return 0
+    # 표 형태로 출력 (id, email, nickname, last_login_at)
+    col_id = "id"
+    col_email = "email"
+    col_nickname = "nickname"
+    col_last = "last_login_at"
+    lens = [len(col_id), len(col_email), len(col_nickname), len(col_last)]
+    for r in rows:
+        uid, email, nickname, last_at = r
+        last_str = last_at.strftime("%Y-%m-%d %H:%M") if last_at else "(없음)"
+        lens[0] = max(lens[0], len(str(uid)))
+        lens[1] = max(lens[1], len(email or ""))
+        lens[2] = max(lens[2], len(nickname or ""))
+        lens[3] = max(lens[3], len(last_str))
+    fmt = f"{{:<{lens[0]}}}  {{:<{lens[1]}}}  {{:<{lens[2]}}}  {{:<{lens[3]}}}"
+    print(fmt.format(col_id, col_email, col_nickname, col_last))
+    print("-" * (sum(lens) + 6))
+    for r in rows:
+        uid, email, nickname, last_at = r
+        last_str = last_at.strftime("%Y-%m-%d %H:%M") if last_at else "(없음)"
+        print(fmt.format(uid, email or "", nickname or "", last_str))
+    return 0
+
+
+def cmd_user(env_path: Path) -> int:
+    """앱 사용자 목록 + 최근 접속일 출력."""
+    return asyncio.run(_cmd_user_async(env_path))
+
+
 def main() -> int:
     # 옵션 없이 실행 시 안내만 출력
     if len(sys.argv) == 1:
@@ -256,6 +383,10 @@ def main() -> int:
   baejjangi test mail          메일 발송 테스트
   baejjangi test telegram      텔레그램 발송 테스트
   baejjangi test kakao         카카오 로그인 설정 확인
+  baejjangi --stop             (리눅스) systemd upbit-backend 중지
+  baejjangi --restart          (리눅스) systemd upbit-backend 재시작
+  baejjangi --status           (리눅스) systemd upbit-backend 상태
+  baejjangi --user             앱 사용자 목록 + 최근 접속일
   baejjangi --env-file /path/to/.env test mail
         """,
     )
@@ -269,6 +400,26 @@ def main() -> int:
         "--version",
         action="store_true",
         help="버전 표시",
+    )
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+        help="(리눅스 전용) systemd upbit-backend 서비스 중지",
+    )
+    parser.add_argument(
+        "--restart",
+        action="store_true",
+        help="(리눅스 전용) systemd upbit-backend 서비스 재시작",
+    )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="(리눅스 전용) systemd upbit-backend 서비스 상태 출력",
+    )
+    parser.add_argument(
+        "--user",
+        action="store_true",
+        help="앱 사용자 목록 + 최근 접속일 출력 (.env의 DB 사용)",
     )
     sub = parser.add_subparsers(dest="command", title="서브커맨드")
 
@@ -315,6 +466,14 @@ def main() -> int:
     if getattr(args, "version", False):
         print(f"baejjangi {BAEJJANGI_VERSION}")
         return 0
+    if getattr(args, "stop", False):
+        return cmd_systemd_stop()
+    if getattr(args, "restart", False):
+        return cmd_systemd_restart()
+    if getattr(args, "status", False):
+        return cmd_systemd_status()
+    if getattr(args, "user", False):
+        return cmd_user(args.env_file)
 
     if args.command is None:
         parser.print_help()

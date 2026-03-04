@@ -152,6 +152,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호 오류")
     user.login_fail_count = 0
     user.locked_until = None
+    user.last_login_at = now_utc
     await db.commit()
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     return TokenResponse(
@@ -167,6 +168,9 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 def _make_token_response(user: User):
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    user.last_login_at = now_utc
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     return TokenResponse(
         access_token=token,
@@ -221,7 +225,9 @@ async def login_google(
             db.add(user)
             await db.commit()
             await db.refresh(user)
-    return _make_token_response(user)
+    resp = _make_token_response(user)
+    await db.commit()
+    return resp
 
 
 @router.post("/kakao", response_model=TokenResponse)
@@ -265,7 +271,9 @@ async def login_kakao(
             db.add(user)
             await db.commit()
             await db.refresh(user)
-    return _make_token_response(user)
+    resp = _make_token_response(user)
+    await db.commit()
+    return resp
 
 
 @router.get("/me", response_model=UserResponse)
