@@ -133,7 +133,7 @@ def collect_env() -> dict[str, str]:
     print("\n--- DB ---")
     data["DATABASE_URL"] = prompt(
         "DATABASE_URL",
-        "sqlite+aiosqlite:///./upbit_trading.db",
+        "sqlite+aiosqlite:///./baejjangi.db",
     )
 
     return data

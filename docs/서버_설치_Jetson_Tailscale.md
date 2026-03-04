@@ -99,8 +99,8 @@ python3 --version
 
 ```bash
 cd ~
-git clone https://github.com/azossy/upbitAUTObot.git
-cd upbitAUTObot
+git clone https://github.com/azossy/upbitAUTObot.git baejjangi
+cd baejjangi
 ```
 
 **방법 B — PC에서 SCP로 복사 (현재 작업 폴더에서)**
@@ -116,16 +116,16 @@ Jetson에서는:
 
 ```bash
 cd ~
-mkdir -p upbitAUTObot
-mv backend upbitAUTObot/
-cd upbitAUTObot/backend
+mkdir -p baejjangi
+mv backend baejjangi/
+cd baejjangi/backend
 ```
 
 ### 4.3 가상환경 + 의존성 설치
 
 ```bash
-cd ~/upbitAUTObot/backend
-# 또는 clone 한 경우: cd ~/upbitAUTObot/backend
+cd ~/baejjangi/backend
+# 또는 clone 한 경우: cd ~/baejjangi/backend
 
 python3 -m venv venv
 source venv/bin/activate
@@ -164,10 +164,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 ### 4.6 systemd로 상시 실행
 
 ```bash
-sudo nano /etc/systemd/system/upbit-backend.service
+sudo nano /etc/systemd/system/baejjangi-backend.service
 ```
 
-아래 내용 붙여넣고, 경로가 다르면 수정합니다. (사용자명 `upbit`, 경로 `/home/upbit/upbitAUTObot/backend`)
+아래 내용 붙여넣고, 경로가 다르면 수정합니다. (사용자명 `upbit`, **기본 설치 폴더 `baejjangi`** → `/home/upbit/baejjangi/backend`)
 
 ```ini
 [Unit]
@@ -178,9 +178,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=upbit
-WorkingDirectory=/home/upbit/upbitAUTObot/backend
-EnvironmentFile=/home/upbit/upbitAUTObot/backend/.env
-ExecStart=/home/upbit/upbitAUTObot/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+WorkingDirectory=/home/upbit/baejjangi/backend
+EnvironmentFile=/home/upbit/baejjangi/backend/.env
+ExecStart=/home/upbit/baejjangi/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
@@ -192,9 +192,9 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable upbit-backend
-sudo systemctl start upbit-backend
-sudo systemctl status upbit-backend
+sudo systemctl enable baejjangi-backend
+sudo systemctl start baejjangi-backend
+sudo systemctl status baejjangi-backend
 ```
 
 `active (running)` 이면 성공입니다.
@@ -233,6 +233,6 @@ sudo systemctl status upbit-backend
 
 - **방화벽**: Tailscale은 사용자 공간 VPN이라 보통 **라우터 포트포워딩이 필요 없습니다**. Jetson 방화벽(ufw)에서 8000 포트를 열 필요는 없고, `0.0.0.0:8000`으로 띄우면 Tailscale 인터페이스에서 접근 가능합니다.
 - **재부팅**: systemd에 등록했으므로 Jetson 재부팅 후에도 백엔드가 자동으로 올라옵니다. Tailscale도 부팅 시 자동 기동됩니다.
-- **문제 발생 시**: `sudo journalctl -u upbit-backend -f` 로 로그 확인.
+- **문제 발생 시**: `sudo journalctl -u baejjangi-backend -f` 로 로그 확인.
 
 추가: docs/배포_가이드.md (환경변수·CORS·점검 체크리스트)

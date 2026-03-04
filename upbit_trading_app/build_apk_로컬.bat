@@ -37,8 +37,10 @@ set BUILD_EXIT=%ERRORLEVEL%
 if %BUILD_EXIT% equ 0 (
   if not exist "%APP_DIR%\build\app\outputs\flutter-apk" mkdir "%APP_DIR%\build\app\outputs\flutter-apk"
   copy /Y "%BUILD_DIR%\build\app\outputs\flutter-apk\app-release.apk" "%APP_DIR%\build\app\outputs\flutter-apk\app-release.apk" >nul
+  cd /d "%APP_DIR%"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\rename_apk_to_versioned.ps1"
   echo.
-  echo APK saved to: %APP_DIR%\build\app\outputs\flutter-apk\app-release.apk
+  echo APK saved to: %APP_DIR%\build\app\outputs\flutter-apk\baejjangi-X-Y-Z.apk
   rd /s /q "%BUILD_DIR%" 2>nul
 ) else (
   echo Build failed. Check log above.

@@ -22,6 +22,8 @@ def flutterVersionName = localProperties.getProperty("flutter.versionName")
 if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
+def apkVersionSlug = flutterVersionName.contains("+") ? flutterVersionName.substring(0, flutterVersionName.indexOf("+")) : flutterVersionName
+apkVersionSlug = apkVersionSlug.replace(".", "-")
 
 android {
     namespace "com.upbit.upbit_trading_app"
@@ -43,6 +45,7 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        setProperty("archivesBaseName", "baejjangi-${apkVersionSlug}")
     }
 
     buildTypes {

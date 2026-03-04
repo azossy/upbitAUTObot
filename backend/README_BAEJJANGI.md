@@ -47,15 +47,15 @@ python build_baejjangi.py
    ```
 3. **결과**: `backend/dist/baejjangi` 실행 파일이 생성됩니다.
 4. **실행**: `./dist/baejjangi` 또는 PATH에 `dist`를 넣은 뒤 `baejjangi --help` 등으로 사용.  
-   서비스(upbit-backend) 제어는 리눅스에서만: `baejjangi --stop`, `baejjangi --restart`, `baejjangi --status`.
+   서비스(baejjangi-backend) 제어는 리눅스에서만: `baejjangi --stop`, `baejjangi --restart`, `baejjangi --status`.
 
 ## 서비스 제어 옵션 (리눅스 전용)
 
 | 옵션 | 설명 |
 |------|------|
-| `baejjangi --stop` | systemd 서비스 `upbit-backend` 중지 |
-| `baejjangi --restart` | systemd 서비스 `upbit-backend` 재시작 |
-| `baejjangi --status` | systemd 서비스 `upbit-backend` 상태 출력 |
+| `baejjangi --stop` | systemd 서비스 `baejjangi-backend` 중지 |
+| `baejjangi --restart` | systemd 서비스 `baejjangi-backend` 재시작 |
+| `baejjangi --status` | systemd 서비스 `baejjangi-backend` 상태 출력 |
 
 위 옵션은 **리눅스**에서만 동작하며, Windows에서는 "리눅스에서만 지원됩니다" 메시지가 나옵니다.
 

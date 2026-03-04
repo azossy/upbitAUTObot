@@ -8,7 +8,7 @@ from typing import List
 
 class Settings(BaseSettings):
     # DB: SQLite
-    DATABASE_URL: str = "sqlite+aiosqlite:///./upbit_trading.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./baejjangi.db"
 
     # JWT
     JWT_SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_64_CHARS_HEX"

@@ -66,8 +66,8 @@ A10. 앱 대시보드에서 "봇 정지"를 누르면 서버에서 해당 사용
 
 Q11. curl http://127.0.0.1:8000/health 를 했는데 아무것도 안 나와요 / 연결이 거부돼요.
 A11. 서버가 안 떠 있는 상태일 수 있습니다.
-     (1) 서비스 사용 중이면: sudo systemctl status upbit-backend 로 상태 확인. "active (running)" 이 아니면 실패한 것입니다.
-     (2) 로그 확인: sudo journalctl -u upbit-backend -n 40 --no-pager
+     (1) 서비스 사용 중이면: sudo systemctl status baejjangi-backend 로 상태 확인. "active (running)" 이 아니면 실패한 것입니다.
+     (2) 로그 확인: sudo journalctl -u baejjangi-backend -n 40 --no-pager
          여기서 ValidationError, "Extra inputs are not permitted" 가 나오면 Q12를 보세요.
      (3) 포트 확인: ss -tlnp | grep 8000 에 아무것도 안 나오면 8000에서 리스닝 중인 프로세스가 없는 것입니다.
      (4) 수동 실행: cd backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000
@@ -85,12 +85,12 @@ A12. 서버의 backend/app/config.py 가 예전 버전이라 .env 에 있는 이
             EMAIL_FROM: str = "배짱이 <noreply@example.com>"
             VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
             그리고 class Config: 안에 extra = "ignore" 가 있는지 확인, 없으면 추가합니다.
-     해결 2) PC에서 최신 config.py 를 GitHub에 푸시한 뒤, Jetson에서 git pull 후 sudo systemctl restart upbit-backend
+     해결 2) PC에서 최신 config.py 를 GitHub에 푸시한 뒤, Jetson에서 git pull 후 sudo systemctl restart baejjangi-backend
      상세 단계는 docs/서버_설치_빠른시작.md 의 "서버가 안 뜰 때 (Jetson)" 섹션을 보세요.
 
-Q13. systemctl status 로 보니 upbit-backend 가 failed / activating (auto-restart) 예요.
+Q13. systemctl status 로 보니 baejjangi-backend 가 failed / activating (auto-restart) 예요.
 A13. 백엔드가 기동 직후 종료되고 있다는 뜻입니다. Q12 와 같이 config.py·.env 불일치(또는 Pydantic 오류)인 경우가 많습니다.
-     sudo journalctl -u upbit-backend -n 50 --no-pager 로 마지막 에러 메시지를 확인한 뒤,
+     sudo journalctl -u baejjangi-backend -n 50 --no-pager 로 마지막 에러 메시지를 확인한 뒤,
      "Extra inputs" 이면 Q12, 그 외 ModuleNotFoundError/ImportError 등이면 해당 모듈·경로를 확인하세요.
 
 Q14. 서비스는 active (running) 인데 curl 이 여전히 연결 거부예요.

@@ -10,7 +10,7 @@
 ### 0.1 설정 파일 위치·존재
 
 ```bash
-ls -la /home/upbit/upbitAUTObot/backend/.env
+ls -la /home/upbit/baejjangi/backend/.env
 ```
 
 - **확인**: `.env` 파일이 있어야 함. 없으면 `cp .env.example .env` 후 편집.
@@ -41,7 +41,7 @@ ls -la /home/upbit/upbitAUTObot/backend/.env
 - 또는 수동: `ssh upbit@100.80.178.45` 로그인 후 아래 실행.
 
 ```bash
-cd ~/upbitAUTObot && git pull && sudo systemctl restart upbit-backend
+cd ~/baejjangi && git pull && sudo systemctl restart baejjangi-backend
 ```
 
 - **확인**: 인증 메일·회원가입 플로우가 포함된 **최신 백엔드**인지.  
@@ -50,18 +50,18 @@ cd ~/upbitAUTObot && git pull && sudo systemctl restart upbit-backend
 ### 0.5 systemd 서비스 설정
 
 ```bash
-cat /etc/systemd/system/upbit-backend.service
+cat /etc/systemd/system/baejjangi-backend.service
 ```
 
-- **확인**: `WorkingDirectory`, `EnvironmentFile`, `ExecStart` 경로가 실제 Jetson 경로와 일치하는지 (`/home/upbit/upbitAUTObot/backend` 등).
+- **확인**: `WorkingDirectory`, `EnvironmentFile`, `ExecStart` 경로가 실제 Jetson 경로와 일치하는지 (`/home/upbit/baejjangi/backend` 등).
 
 ### 0.6 DB 파일 (SQLite)
 
 ```bash
-ls -la /home/upbit/upbitAUTObot/backend/*.db 2>/dev/null || echo "DB 없음(첫 기동 시 생성됨)"
+ls -la /home/upbit/baejjangi/backend/*.db 2>/dev/null || echo "DB 없음(첫 기동 시 생성됨)"
 ```
 
-- **확인**: 기동 후 `upbit_trading.db` 등이 생성되어 있으면 정상.
+- **확인**: 기동 후 `baejjangi.db` 등이 생성되어 있으면 정상.
 
 ---
 
@@ -70,7 +70,7 @@ ls -la /home/upbit/upbitAUTObot/backend/*.db 2>/dev/null || echo "DB 없음(첫 
 ### 1.1 백엔드 서비스 상태
 
 ```bash
-sudo systemctl status upbit-backend
+sudo systemctl status baejjangi-backend
 ```
 
 - **확인**: `active (running)` 이어야 함. 실패 시 아래 1.4 로그 확인.
@@ -100,7 +100,7 @@ curl -s -X POST http://127.0.0.1:8000/api/v1/auth/send-verification-email \
 ### 1.4 최근 로그 (에러 있을 때)
 
 ```bash
-sudo journalctl -u upbit-backend -n 50 --no-pager
+sudo journalctl -u baejjangi-backend -n 50 --no-pager
 ```
 
 - ValidationError, ModuleNotFoundError, SMTP 오류 등 확인.
@@ -108,7 +108,7 @@ sudo journalctl -u upbit-backend -n 50 --no-pager
 ### 1.5 메일 설정 테스트 (baejjangi CLI)
 
 ```bash
-cd ~/upbitAUTObot/backend
+cd ~/baejjangi/backend
 source venv/bin/activate
 python baejjangi.py test mail
 # 또는 빌드된 실행 파일: ./dist/baejjangi test mail
@@ -142,7 +142,7 @@ curl -s http://127.0.0.1:8000/openapi.json | grep -o '"/[^"]*"' | sort -u
 | JWT_SECRET_KEY / ENCRYPTION_KEY 변경 여부 | |
 | SMTP 설정 (회원가입 인증용) | |
 | 코드 최신 (send-verification-email 포함) | |
-| systemd upbit-backend | |
+| systemd baejjangi-backend | |
 | curl 127.0.0.1:8000/health | |
 | POST send-verification-email | |
 | openapi에 인증 메일 경로 노출 | |
@@ -166,6 +166,6 @@ curl -s http://127.0.0.1:8000/openapi.json | grep -o '"/[^"]*"' | sort -u
 - **설정**: `.env` 존재, `JWT_SECRET_KEY`·`ENCRYPTION_KEY` 실제 값으로 변경됨.
 - **회원가입 인증**: `SMTP_HOST`·`SMTP_USER`·`SMTP_PASSWORD` 설정됨. `baejjangi test mail` 성공.
 - **코드**: 최신 배포본으로 `send-verification-email`, `verify-and-register` 라우트가 노출됨 (`openapi.json` 또는 1.3·1.7 확인).
-- **프로세스**: `systemctl status upbit-backend` → `active (running)`.
+- **프로세스**: `systemctl status baejjangi-backend` → `active (running)`.
 - **API**: `curl 127.0.0.1:8000/health` → 200, `POST send-verification-email` → 200 또는 503(SMTP 미설정 시).
 - **네트워크**: `tailscale status` → up, 100.x.x.x 부여.

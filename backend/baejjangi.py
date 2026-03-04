@@ -5,7 +5,7 @@
 메일/텔레그램/카카오 설정 테스트: baejjangi test (mail|telegram|kakao)
 실행: baejjangi [--help] | baejjangi set (telegram|email) | baejjangi test (mail|telegram|kakao)
       컴파일 후: ./baejjangi 또는 baejjangi.exe
-리눅스: --stop, --restart, --status (systemd upbit-backend), --user (앱 사용자 목록+최근 접속일)
+리눅스: --stop, --restart, --status (systemd baejjangi-backend), --user (앱 사용자 목록+최근 접속일)
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ if str(_BACKEND_DIR) not in sys.path:
 # 기본 .env 경로: 실행 파일/스크립트와 같은 디렉터리
 DEFAULT_ENV = _BACKEND_DIR / ".env"
 
-BAEJJANGI_VERSION = "1.4.1"
+BAEJJANGI_VERSION = "1.4.2"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -237,7 +237,7 @@ def cmd_health(base_url: str) -> int:
         return 1
 
 
-SYSTEMD_SERVICE = "upbit-backend"
+SYSTEMD_SERVICE = "baejjangi-backend"
 
 
 def _is_linux() -> bool:
@@ -245,7 +245,7 @@ def _is_linux() -> bool:
 
 
 def cmd_systemd_stop() -> int:
-    """systemd upbit-backend 서비스 중지 (리눅스에서만)."""
+    """systemd baejjangi-backend 서비스 중지 (리눅스에서만)."""
     if not _is_linux():
         print("--stop은 리눅스에서만 지원됩니다.")
         return 1
@@ -267,7 +267,7 @@ def cmd_systemd_stop() -> int:
 
 
 def cmd_systemd_restart() -> int:
-    """systemd upbit-backend 서비스 재시작 (리눅스에서만)."""
+    """systemd baejjangi-backend 서비스 재시작 (리눅스에서만)."""
     if not _is_linux():
         print("--restart는 리눅스에서만 지원됩니다.")
         return 1
@@ -289,7 +289,7 @@ def cmd_systemd_restart() -> int:
 
 
 def cmd_systemd_status() -> int:
-    """systemd upbit-backend 서비스 상태 출력 (리눅스에서만)."""
+    """systemd baejjangi-backend 서비스 상태 출력 (리눅스에서만)."""
     if not _is_linux():
         print("--status는 리눅스에서만 지원됩니다.")
         return 1
@@ -309,10 +309,10 @@ def cmd_systemd_status() -> int:
 async def _cmd_user_async(env_path: Path) -> int:
     """앱 사용자 목록 + 최근 접속일 DB 조회 (비동기)."""
     _load_env_into_os(env_path)
-    # DATABASE_URL이 상대 경로(./upbit_trading.db)면 backend 디렉터리 기준으로 절대 경로로 설정
-    db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./upbit_trading.db")
-    if "sqlite" in db_url and ("/./upbit_trading.db" in db_url or db_url.rstrip("/").endswith("/./upbit_trading.db")):
-        db_path = _BACKEND_DIR / "upbit_trading.db"
+    # DATABASE_URL이 상대 경로(./baejjangi.db)면 backend 디렉터리 기준으로 절대 경로로 설정
+    db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./baejjangi.db")
+    if "sqlite" in db_url and ("/./baejjangi.db" in db_url or db_url.rstrip("/").endswith("/./baejjangi.db")):
+        db_path = _BACKEND_DIR / "baejjangi.db"
         os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
     try:
         from sqlalchemy import select
@@ -383,9 +383,9 @@ def main() -> int:
   baejjangi test mail          메일 발송 테스트
   baejjangi test telegram      텔레그램 발송 테스트
   baejjangi test kakao         카카오 로그인 설정 확인
-  baejjangi --stop             (리눅스) systemd upbit-backend 중지
-  baejjangi --restart          (리눅스) systemd upbit-backend 재시작
-  baejjangi --status           (리눅스) systemd upbit-backend 상태
+  baejjangi --stop             (리눅스) systemd baejjangi-backend 중지
+  baejjangi --restart          (리눅스) systemd baejjangi-backend 재시작
+  baejjangi --status           (리눅스) systemd baejjangi-backend 상태
   baejjangi --user             앱 사용자 목록 + 최근 접속일
   baejjangi --env-file /path/to/.env test mail
         """,
@@ -404,17 +404,17 @@ def main() -> int:
     parser.add_argument(
         "--stop",
         action="store_true",
-        help="(리눅스 전용) systemd upbit-backend 서비스 중지",
+        help="(리눅스 전용) systemd baejjangi-backend 서비스 중지",
     )
     parser.add_argument(
         "--restart",
         action="store_true",
-        help="(리눅스 전용) systemd upbit-backend 서비스 재시작",
+        help="(리눅스 전용) systemd baejjangi-backend 서비스 재시작",
     )
     parser.add_argument(
         "--status",
         action="store_true",
-        help="(리눅스 전용) systemd upbit-backend 서비스 상태 출력",
+        help="(리눅스 전용) systemd baejjangi-backend 서비스 상태 출력",
     )
     parser.add_argument(
         "--user",

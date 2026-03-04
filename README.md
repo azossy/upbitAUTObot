@@ -28,8 +28,8 @@
 **가장 짧은 방법 (Ubuntu/Jetson):**
 
 ```bash
-git clone https://github.com/azossy/upbitAUTObot.git
-cd upbitAUTObot/backend
+git clone https://github.com/azossy/upbitAUTObot.git baejjangi
+cd baejjangi/backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -133,9 +133,11 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 ### 1. 저장소 클론
 
+**서버 설치 시 기본 폴더명 `baejjangi` 권장** (아래처럼 clone 시 폴더 이름 지정).
+
 ```bash
-git clone https://github.com/azossy/upbitAUTObot.git
-cd upbitAUTObot
+git clone https://github.com/azossy/upbitAUTObot.git baejjangi
+cd baejjangi
 ```
 
 ### 2. 서버(백엔드) 설치 및 실행
@@ -225,9 +227,9 @@ python build_baejjangi.py
 | | `baejjangi test kakao` | 카카오 로그인 설정(KAKAO_REST_API_KEY) 확인 |
 | **확인** | `baejjangi config` | 현재 .env 설정 요약 (민감정보 마스킹) |
 | | `baejjangi health` | 서버 /health 체크 (기본 http://127.0.0.1:8000, `--url` 로 변경 가능) |
-| **리눅스 전용** | `baejjangi --stop` | systemd 서비스 `upbit-backend` 중지 |
-| | `baejjangi --restart` | systemd 서비스 `upbit-backend` 재시작 |
-| | `baejjangi --status` | systemd 서비스 `upbit-backend` 상태 출력 |
+| **리눅스 전용** | `baejjangi --stop` | systemd 서비스 `baejjangi-backend` 중지 |
+| | `baejjangi --restart` | systemd 서비스 `baejjangi-backend` 재시작 |
+| | `baejjangi --status` | systemd 서비스 `baejjangi-backend` 상태 출력 |
 | **DB 조회** | `baejjangi --user` | 앱 사용자 목록 + 최근 접속일 표로 출력 (.env의 DATABASE_URL 사용) |
 
 상세 사용법·빌드 절차는 **[backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md)** 를 참고하세요.

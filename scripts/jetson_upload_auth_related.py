@@ -12,10 +12,10 @@ def main():
     host, user = "100.80.178.45", "upbit"
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "app"))
     files = [
-        ("routers/auth.py", "/home/upbit/upbitAUTObot/backend/app/routers/auth.py"),
-        ("schemas/auth.py", "/home/upbit/upbitAUTObot/backend/app/schemas/auth.py"),
-        ("models/email_verification.py", "/home/upbit/upbitAUTObot/backend/app/models/email_verification.py"),
-        ("services/email_service.py", "/home/upbit/upbitAUTObot/backend/app/services/email_service.py"),
+        ("routers/auth.py", "/home/upbit/baejjangi/backend/app/routers/auth.py"),
+        ("schemas/auth.py", "/home/upbit/baejjangi/backend/app/schemas/auth.py"),
+        ("models/email_verification.py", "/home/upbit/baejjangi/backend/app/models/email_verification.py"),
+        ("services/email_service.py", "/home/upbit/baejjangi/backend/app/services/email_service.py"),
     ]
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -29,7 +29,7 @@ def main():
         else:
             print(f"  SKIP: {local} 없음")
     sftp.close()
-    stdin, stdout, stderr = client.exec_command("sudo -n systemctl restart upbit-backend 2>/dev/null; sleep 1; echo PASS | sudo -S systemctl restart upbit-backend 2>/dev/null; sleep 5; systemctl is-active upbit-backend", get_pty=True)
+    stdin, stdout, stderr = client.exec_command("sudo -n systemctl restart baejjangi-backend 2>/dev/null; sleep 1; echo PASS | sudo -S systemctl restart baejjangi-backend 2>/dev/null; sleep 5; systemctl is-active baejjangi-backend", get_pty=True)
     import time
     time.sleep(0.5)
     stdin.write(password + "\n")

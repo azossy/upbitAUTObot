@@ -44,13 +44,13 @@ def main():
     report = []
 
     # 1. .env 존재
-    code, out, err = run_ssh("test -f /home/upbit/upbitAUTObot/backend/.env && echo OK || echo MISSING", password, host, user)
+    code, out, err = run_ssh("test -f /home/upbit/baejjangi/backend/.env && echo OK || echo MISSING", password, host, user)
     env_ok = "OK" in out
     report.append(("1. .env 존재", "OK" if env_ok else "MISSING", out.strip() or err.strip()))
 
     # 2. JWT/ENCRYPTION 기본값 아님
     code, out, err = run_ssh(
-        "grep -E '^(JWT_SECRET_KEY|ENCRYPTION_KEY)=' /home/upbit/upbitAUTObot/backend/.env 2>/dev/null | sed 's/=.*/=***/'",
+        "grep -E '^(JWT_SECRET_KEY|ENCRYPTION_KEY)=' /home/upbit/baejjangi/backend/.env 2>/dev/null | sed 's/=.*/=***/'",
         password, host, user
     )
     has_secrets = "JWT_SECRET_KEY" in out and "ENCRYPTION_KEY" in out
@@ -58,7 +58,7 @@ def main():
 
     # 3. 코드 최신 (auth에 send-verification-email 있는지)
     code, out, err = run_ssh(
-        "grep -q 'send-verification-email' /home/upbit/upbitAUTObot/backend/app/routers/auth.py 2>/dev/null && echo HAS_ROUTE || echo OLD"
+        "grep -q 'send-verification-email' /home/upbit/baejjangi/backend/app/routers/auth.py 2>/dev/null && echo HAS_ROUTE || echo OLD"
         , password, host, user
     )
     has_route = "HAS_ROUTE" in out
@@ -67,12 +67,12 @@ def main():
     # 4. 갱신: git pull
     if not has_route:
         code, out, err = run_ssh(
-            "cd /home/upbit/upbitAUTObot && git pull",
+            "cd /home/upbit/baejjangi && git pull",
             password, host, user
         )
         report.append(("4. git pull", "OK" if code == 0 else "실패", (out.strip() or err.strip())[:300]))
         code2, out2, _ = run_ssh(
-            "grep -q 'send-verification-email' /home/upbit/upbitAUTObot/backend/app/routers/auth.py 2>/dev/null && echo HAS || echo NO",
+            "grep -q 'send-verification-email' /home/upbit/baejjangi/backend/app/routers/auth.py 2>/dev/null && echo HAS || echo NO",
             password, host, user
         )
         if "HAS" not in out2:
@@ -85,7 +85,7 @@ def main():
                 local_path = os.path.join(os.path.dirname(__file__), "..", "backend", "app", "routers", "auth.py")
                 local_path = os.path.abspath(local_path)
                 if os.path.isfile(local_path):
-                    sftp.put(local_path, "/home/upbit/upbitAUTObot/backend/app/routers/auth.py")
+                    sftp.put(local_path, "/home/upbit/baejjangi/backend/app/routers/auth.py")
                     report.append(("4b. auth.py SCP 업로드", "OK", "로컬->Jetson"))
                 else:
                     report.append(("4b. auth.py SCP", "스킵", "로컬파일 없음"))
@@ -95,17 +95,17 @@ def main():
                 report.append(("4b. auth.py SCP", "실패", str(e)[:80]))
 
     # 5. systemctl 재시작 (먼저 비밀없이 시도, 실패 시 get_pty로 sudo 비밀번호 전달)
-    code, out, err = run_ssh("sudo -n systemctl restart upbit-backend 2>/dev/null; echo EXIT=$?", password, host, user)
+    code, out, err = run_ssh("sudo -n systemctl restart baejjangi-backend 2>/dev/null; echo EXIT=$?", password, host, user)
     if code != 0 or "EXIT=0" not in out:
-        code, out, err = run_ssh("sudo systemctl restart upbit-backend", password, host, user, wait_sudo=True)
+        code, out, err = run_ssh("sudo systemctl restart baejjangi-backend", password, host, user, wait_sudo=True)
     run_ssh("sleep 6", password, host, user)
-    code2, out2, _ = run_ssh("systemctl is-active upbit-backend 2>/dev/null || true", password, host, user)
+    code2, out2, _ = run_ssh("systemctl is-active baejjangi-backend 2>/dev/null || true", password, host, user)
     active = "active" in out2
-    report.append(("5. upbit-backend 재시작", "active" if active else "비활성", out2.strip()))
+    report.append(("5. baejjangi-backend 재시작", "active" if active else "비활성", out2.strip()))
 
     # 5b. pull 후 재확인: auth.py에 라우트 있는지
     code, out, _ = run_ssh(
-        "grep -q 'send-verification-email' /home/upbit/upbitAUTObot/backend/app/routers/auth.py 2>/dev/null && echo HAS || echo NO",
+        "grep -q 'send-verification-email' /home/upbit/baejjangi/backend/app/routers/auth.py 2>/dev/null && echo HAS || echo NO",
         password, host, user
     )
     report.append(("5b. pull 후 인증메일 라우트", "OK" if "HAS" in out else "NO(저장소 미반영)", out.strip()))
@@ -134,11 +134,11 @@ def main():
     # 9. 서비스 실패 시 로그 (health/API 실패할 때만)
     if not health_ok or not api_ok:
         code, out, err = run_ssh(
-            "sudo -n journalctl -u upbit-backend -n 30 --no-pager 2>/dev/null || true",
+            "sudo -n journalctl -u baejjangi-backend -n 30 --no-pager 2>/dev/null || true",
             password, host, user
         )
         if not out.strip():
-            code, out, err = run_ssh("journalctl -u upbit-backend -n 30 --no-pager 2>/dev/null || true", password, host, user)
+            code, out, err = run_ssh("journalctl -u baejjangi-backend -n 30 --no-pager 2>/dev/null || true", password, host, user)
         report.append(("9. journalctl(최근)", "참고" if out.strip() else "-", (out.strip() or err.strip())[:500]))
 
     # 결과 출력
@@ -151,7 +151,7 @@ def main():
     if not api_ok and api_code == "404":
         print("  [조치] 인증메일 API가 404입니다. auth.py SCP 업로드 후 재시작. PC에서 저장소 푸시 후 Jetson에서 git pull 권장.")
     if not health_ok or (not api_ok and api_code != "404"):
-        print("  [참고] health/API 연결 실패(000) 시 서비스 재시작 중이거나 크래시 루프일 수 있음. Jetson에서 sudo journalctl -u upbit-backend -n 50 확인.")
+        print("  [참고] health/API 연결 실패(000) 시 서비스 재시작 중이거나 크래시 루프일 수 있음. Jetson에서 sudo journalctl -u baejjangi-backend -n 50 확인.")
     # 결과를 파일로 저장 (UTF-8)
     report_path = os.path.join(os.path.dirname(__file__), "..", "docs", "Jetson_점검_결과_최근.txt")
     report_path = os.path.abspath(report_path)

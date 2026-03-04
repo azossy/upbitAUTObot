@@ -21,9 +21,7 @@ exit /b 1
 :build
 cd /d "%~dp0"
 "%FLUTTER%" build apk --release
-if %ERRORLEVEL% equ 0 (
-  echo.
-  echo APK 생성 완료: build\app\outputs\flutter-apk\app-release.apk
-) else (
-  exit /b 1
-)
+if %ERRORLEVEL% neq 0 exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\rename_apk_to_versioned.ps1"
+echo.
+echo APK 생성 완료: build\app\outputs\flutter-apk\baejjangi-X-Y-Z.apk (버전별 파일명)

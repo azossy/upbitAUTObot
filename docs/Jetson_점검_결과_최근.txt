@@ -5,7 +5,7 @@ Jetson 전 항목 점검·조치 결과 (최종)
 3. 인증메일 라우트(코드): OK (HAS_ROUTE)
 4. git pull: 수행
 4b. auth.py SCP 업로드: OK (이후 관련 파일 일괄 업로드로 대체)
-5. upbit-backend 재시작: active
+5. baejjangi-backend 재시작: active
 5b. pull 후 인증메일 라우트: OK
 6. GET /health: 200 → {"status":"ok","version":"1.1.0"}
 7. POST send-verification-email: 200 → 인증 메일 발송 응답 정상
