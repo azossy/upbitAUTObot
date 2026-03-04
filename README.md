@@ -14,8 +14,8 @@
 ### 1단계: Android 앱 받기
 
 1. **[Releases](https://github.com/azossy/upbitAUTObot/releases)** 페이지로 갑니다.
-2. 가장 위에 있는 **최신 버전**(예: v1.1.0)을 클릭합니다.
-3. **Assets** 안에 있는 **app-release.apk** 를 눌러 다운로드합니다.
+2. 가장 위에 있는 **최신 버전**(예: v1.4.3)을 클릭합니다.
+3. **Assets** 안에 있는 **baejjangi-1-4-3.apk** (또는 app-release.apk) 를 눌러 다운로드합니다.
 4. 다운로드한 APK 파일을 **휴대폰으로 옮깁니다.** (USB, 클라우드, 메신저 등 편한 방법으로)
 5. 휴대폰에서 APK 파일을 탭해 **설치**합니다.  
    - "알 수 없는 앱 설치" 허용이 뜨면 **허용**을 선택해 주세요.
@@ -51,7 +51,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 "Application startup complete" 가 보이면 서버가 켜진 겁니다.  
 (같은 공유기라면 PC/폰 브라우저에서 `http://서버IP:8000/health` 로 접속해 `{"status":"ok"}` 가 나오는지 확인해 보세요.)
 
-**Jetson + Tailscale**로 하시려면 [docs/서버_설치_Jetson_Tailscale.md](docs/서버_설치_Jetson_Tailscale.md) 를 보시면 단계별로 잘 나와 있습니다.
+**Jetson + Tailscale** 포함 서버 설치·배포는 [docs/설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) 를 참고하세요.
 
 ### 3단계: 앱에서 서버 연결
 
@@ -73,7 +73,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
    잔고·포지션·거래 내역은 대시보드와 메뉴에서 확인하실 수 있습니다.
 
 여기까지 하시면 **빠른 실행**은 완료입니다.  
-상세 서버 설치·환경변수·상시 실행(systemd)은 [docs/배포_가이드.md](docs/배포_가이드.md) 를 참고하세요.
+상세 서버 설치·환경변수·상시 실행(systemd)은 [docs/설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) 를 참고하세요.
 
 **자세한 사용법·에러 시 대처법**은 저장소 루트의 **[qna.txt](qna.txt)** 를 보세요. 질문·답변 형식으로 사용법과 서버/앱 오류 대응이 정리되어 있습니다.
 
@@ -163,13 +163,13 @@ cp .env.example .env
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.1.0"}` 이 나오면 정상입니다.  
-상시 실행은 [docs/배포_가이드.md](docs/배포_가이드.md) 의 systemd 예시를 참고하세요.
+브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.4.3"}` 이 나오면 정상입니다.  
+상시 실행은 [docs/설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) 의 systemd 예시를 참고하세요.
 
 ### 3. Android 앱 — APK 받기 또는 직접 빌드
 
 **방법 A: 이미 빌드된 APK 사용 (권장)**  
-- [Releases](https://github.com/azossy/upbitAUTObot/releases) 에서 `app-release.apk` 다운로드 후 Android 기기에 설치.
+- [Releases](https://github.com/azossy/upbitAUTObot/releases) 에서 최신 버전의 **baejjangi-1-4-3.apk** (또는 app-release.apk) 다운로드 후 Android 기기에 설치.
 
 **방법 B: 직접 빌드 후 GitHub Release에 올리기**
 
@@ -180,8 +180,8 @@ APK를 직접 컴파일해서 GitHub에 올리려면:
    **Mac/Linux**: `cd upbit_trading_app && flutter pub get && flutter build apk --release`
 3. 빌드가 끝나면 `upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk` 가 생성됩니다.
 4. 이 APK를 **GitHub Release**에 올리려면 (GitHub CLI 설치 후):  
-   `gh release upload v1.1.0 upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk --repo azossy/upbitAUTObot --clobber`  
-   (버전 태그 `v1.1.0`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.1.0 --title "배짱이 v1.1.0"` 로 생성한 뒤 upload 하세요.)
+   `gh release upload v1.4.3 upbit_trading_app/build/app/outputs/flutter-apk/baejjangi-1-4-3.apk --repo azossy/upbitAUTObot --clobber`  
+   (버전 태그 `v1.4.3`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.4.3 --title "배짱이 v1.4.3"` 로 생성한 뒤 upload 하세요.)
 
 자세한 절차는 [docs/APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) 를 참고하세요.
 
@@ -230,6 +230,8 @@ python build_baejjangi.py
 | **리눅스 전용** | `baejjangi --stop` | systemd 서비스 `baejjangi-backend` 중지 |
 | | `baejjangi --restart` | systemd 서비스 `baejjangi-backend` 재시작 |
 | | `baejjangi --status` | systemd 서비스 `baejjangi-backend` 상태 출력 |
+| | `baejjangi --update` | GitHub에서 최신 코드 pull·pip 설치·서비스 재시작·health 검사 (**.env 미변경**) |
+| | `baejjangi --reinstall` | **클린 재설치**: 기존 제거 후 클론·설정 복원·venv·서비스 기동·서버 테스트 후 결과 출력 |
 | **DB 조회** | `baejjangi --user` | 앱 사용자 목록 + 최근 접속일 표로 출력 (.env의 DATABASE_URL 사용) |
 
 상세 사용법·빌드 절차는 **[backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md)** 를 참고하세요.
@@ -256,11 +258,9 @@ upbitAUTObot/
 │   ├── lib/
 │   └── pubspec.yaml
 ├── docs/                 # 기획·배포·트레이딩 로직 문서
-│   ├── 배포_가이드.md
-│   ├── 서버_설치_빠른시작.md
-│   ├── 서버_설치_Jetson_Tailscale.md
+│   ├── 설치_및_배포_가이드.md
 │   ├── 트레이딩_로직_상세_가이드.md
-│   └── 진입_매각_다중확인_로직.md
+│   └── ...
 ├── qna.txt               # 질문·답변 형식 사용법 및 에러 시 대처법
 └── README.md
 ```
@@ -271,10 +271,8 @@ upbitAUTObot/
 
 | 문서 | 설명 |
 |------|------|
-| [트레이딩_로직_상세_가이드.md](docs/트레이딩_로직_상세_가이드.md) | **진입·매각 로직을 아주 길고 친절하게** 설명 (예시, FAQ 포함) |
-| [배포_가이드.md](docs/배포_가이드.md) | 환경변수, CORS, systemd, Docker, 점검 체크리스트 |
-| [서버_설치_Jetson_Tailscale.md](docs/서버_설치_Jetson_Tailscale.md) | Jetson + Tailscale로 서버 세팅·SSH·앱 연결 |
-| [진입_매각_다중확인_로직.md](docs/진입_매각_다중확인_로직.md) | 진입/매각 2~3단계 확인 설계 요약 |
+| [트레이딩_로직_상세_가이드.md](docs/트레이딩_로직_상세_가이드.md) | **진입·매각 로직** (요약 표·예시·FAQ 포함) |
+| [설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) | 서버 설치·Jetson·배포·점검 통합 |
 | [APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) | APK 직접 빌드·GitHub Release 업로드 방법 |
 | [API_명세서.md](docs/API_명세서.md) | 백엔드 API 요약 |
 | [backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md) | **baejjangi CLI** 상세 사용법·빌드·서비스 제어 |

@@ -4,7 +4,7 @@
 
 Android 정식 배포용 APK를 빌드하고 GitHub Release에 올리는 방법입니다.
 
-**APK 파일명 규칙**: 빌드 결과물은 **`baejjangi-X-Y-Z.apk`** 형식으로 둡니다 (예: baejjangi-1-4-1.apk). `build_apk.bat` / `build_apk_로컬.bat` 실행 시 자동으로 버전별 파일명이 생성되며, 수동 빌드 후에는 `upbit_trading_app/scripts/rename_apk_to_versioned.ps1` 를 실행하면 됩니다.
+**APK 파일명 규칙**: 빌드 결과물은 **`baejjangi-X-Y-Z.apk`** 형식으로 둡니다 (예: baejjangi-1-4-3.apk). `build_apk.bat` / `build_apk_로컬.bat` 실행 시 자동으로 버전별 파일명이 생성되며, 수동 빌드 후에는 `upbit_trading_app/scripts/rename_apk_to_versioned.ps1` 를 실행하면 됩니다.
 
 **※ 정식 상용 배포용 앱**이므로, 테스트는 **크롬/웹이 아닌 APK 빌드 후 실기기 또는 에뮬레이터**로 진행해야 합니다.
 
@@ -25,19 +25,19 @@ GitHub Actions는 빌드에 3~5분 걸리므로, **직접 컴파일해서 올리
   → **build_apk_로컬.bat** 을 사용하세요. (subst로 영문 경로에서 빌드해 한글 경로 이슈를 피합니다.)
 1. `upbit_trading_app` 폴더에서 **build_apk_로컬.bat** 더블클릭 실행.  
    (Flutter 경로가 `C:\flutter\bin\flutter.bat` 이 아니면 파일 안의 `set FLUTTER=...` 를 수정하세요.)
-2. 빌드가 끝나면 `upbit_trading_app\build\app\outputs\flutter-apk\baejjangi-1-4-2.apk`(예: 버전 1.4.2) 형식으로 생성됩니다. (버전마다 파일명이 `baejjangi-X-Y-Z.apk` 로 붙습니다.)
+2. 빌드가 끝나면 `upbit_trading_app\build\app\outputs\flutter-apk\baejjangi-1-4-3.apk`(예: 버전 1.4.3) 형식으로 생성됩니다. (버전마다 파일명이 `baejjangi-X-Y-Z.apk` 로 붙습니다.)
 3. **GitHub CLI(gh)** 가 설치되어 있다면, 프로젝트 루트에서:
    ```powershell
-   gh release upload v1.1.0 upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk --repo azossy/upbitAUTObot --clobber
+   gh release upload v1.4.3 upbit_trading_app/build/app/outputs/flutter-apk/baejjangi-1-4-3.apk --repo azossy/upbitAUTObot --clobber
    ```
-   (이미 v1.1.0 Release가 있어야 합니다. 없으면 먼저 `gh release create v1.1.0 --title "배짱이 v1.1.0"` 로 생성.)
+   (이미 v1.4.3 Release가 있어야 합니다. 없으면 먼저 `gh release create v1.4.3 --title "배짱이 v1.4.3"` 로 생성.)
 
 ### 방법 B: 한 번에 빌드 + 업로드 (PowerShell)
 
 1. **GitHub CLI** 설치 및 `gh auth login` 완료.
 2. `upbit_trading_app` 폴더에서 PowerShell을 열고:
    ```powershell
-   .\upload_apk_to_github.ps1 v1.1.0
+   .\upload_apk_to_github.ps1 v1.4.3
    ```
    이 스크립트는 Flutter로 APK를 빌드한 뒤, 지정한 태그의 Release에 `baejjangi-X-Y-Z.apk` 를 업로드합니다. (Flutter가 `C:\flutter\bin\flutter.bat` 에 있다고 가정)
 
@@ -47,10 +47,10 @@ GitHub Actions는 빌드에 3~5분 걸리므로, **직접 컴파일해서 올리
 cd upbit_trading_app
 flutter pub get
 flutter build apk --release
-# 생성: build/app/outputs/flutter-apk/baejjangi-X-Y-Z.apk (예: baejjangi-1-4-1.apk)
+# 생성: build/app/outputs/flutter-apk/baejjangi-X-Y-Z.apk (예: baejjangi-1-4-3.apk)
 
 # 업로드 (프로젝트 루트 또는 upbit_trading_app에서, 파일명은 실제 버전에 맞게)
-gh release upload v1.1.0 build/app/outputs/flutter-apk/baejjangi-1-4-1.apk --repo azossy/upbitAUTObot --clobber
+gh release upload v1.4.3 build/app/outputs/flutter-apk/baejjangi-1-4-3.apk --repo azossy/upbitAUTObot --clobber
 ```
 
 ---
