@@ -30,7 +30,7 @@ if str(_BACKEND_DIR) not in sys.path:
 # 기본 .env 경로: 실행 파일/스크립트와 같은 디렉터리
 DEFAULT_ENV = _BACKEND_DIR / ".env"
 
-BAEJJANGI_VERSION = "1.1.0"
+BAEJJANGI_VERSION = "1.4.1"
 
 
 def parse_env(path: Path) -> dict[str, str]:
