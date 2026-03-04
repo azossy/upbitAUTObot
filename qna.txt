@@ -1,0 +1,132 @@
+================================================================================
+배짱이 (Baejjangi) — 질문·답변 형식 사용법 및 에러 시 대처법
+================================================================================
+저작자: 차리 (challychoi@me.com)
+※ GitHub 저장소에 포함하여 배포. 자세한 설치·배포는 README.md, docs/ 폴더 참고.
+
+--------------------------------------------------------------------------------
+■ Part 1. 사용법 (질문·답변)
+--------------------------------------------------------------------------------
+
+Q1. 앱은 어디서 받나요?
+A1. GitHub Releases 페이지에서 최신 버전(예: v1.1.0)의 app-release.apk를 다운로드한 뒤
+    휴대폰으로 옮겨 설치합니다. "알 수 없는 앱 설치" 허용이 뜨면 허용을 선택하세요.
+
+Q2. 서버는 꼭 있어야 하나요?
+A2. 네. 앱은 본인 서버(PC, Jetson 등)에 설치한 백엔드 API에 연결해야 합니다.
+    서버를 한 번 설치·실행해 두면, 앱에서 API 서버 주소만 설정하면 됩니다.
+
+Q3. 서버를 PC에서 빨리 켜보고 싶어요.
+A3. backend 폴더에서 다음을 실행하세요.
+    - Windows: venv 만들기 → activate → pip install -r requirements.txt → .env 복사·수정
+    - .env에서 JWT_SECRET_KEY, ENCRYPTION_KEY를 꼭 수정 (64자 hex: python -c "import secrets; print(secrets.token_hex(32))" 두 번 실행해 넣기)
+    - uvicorn main:app --host 0.0.0.0 --port 8000
+    브라우저에서 http://127.0.0.1:8000/health 가 {"status":"ok"} 이면 성공입니다.
+
+Q4. Jetson(Ubuntu)에서 24시간 돌리려면?
+A4. Tailscale 설치 후 같은 계정으로 PC·Jetson 접속. Jetson에 backend 클론 → venv → pip install → .env 수정 후
+    systemd로 상시 실행합니다. 자세한 단계는 docs/서버_설치_Jetson_Tailscale.md, docs/서버_설치_빠른시작.md 를 보세요.
+
+Q5. 앱에서 "API 서버 주소"를 뭘 넣어야 하나요?
+A5. 서버가 돌아가는 주소 + 포트 8000 입니다.
+    - 같은 Wi‑Fi의 PC 서버: http://PC의IP:8000 (예: http://192.168.0.10:8000)
+    - Jetson + Tailscale: http://Jetson의TailscaleIP:8000 (예: http://100.80.178.45:8000)
+    주소 입력 후 저장을 누르면 앱이 해당 서버와 통신합니다.
+
+Q6. 회원가입은 어떻게 하나요?
+A6. 앱 로그인 화면에서 "회원가입"을 누르면 이메일·닉네임·비밀번호를 입력합니다.
+    서버에 이메일 인증(SMTP)이 설정되어 있으면 "인증 메일 받기" → 이메일로 받은 6자리 코드 입력 후 가입 완료됩니다.
+    SMTP가 없으면 테스트용으로 인증 없이 가입될 수 있습니다.
+
+Q7. 이메일 인증(회원가입용)을 쓰려면 서버에 뭘 해야 하나요?
+A7. backend/.env 에 SMTP 설정을 넣습니다. 예 (Outlook):
+    SMTP_HOST=smtp-mail.outlook.com
+    SMTP_PORT=587
+    SMTP_USER=본인이메일@live.co.kr
+    SMTP_PASSWORD=비밀번호또는앱비밀번호
+    EMAIL_FROM=배짱이 <본인이메일@live.co.kr>
+    VERIFICATION_CODE_EXPIRE_MINUTES=10
+    자세한 변수 설명은 docs/서버_설치_빠른시작.md 의 "이메일 인증(회원가입) 사용 시" 섹션을 보세요.
+
+Q8. 로그인은 어떻게 하나요?
+A8. 이메일+비밀번호, 구글 계정, 카카오 계정 중 하나로 로그인할 수 있습니다.
+    처음 한 번 로그인 후 설정에서 업비트 API 키를 등록하고, 매매 설정(손절·익절 등)을 넣은 뒤
+    대시보드에서 "봇 시작"을 누르면 서버에서 봇이 동작합니다.
+
+Q9. 업비트 API 키는 어디서 발급하나요?
+A9. 업비트 웹/앱 → 마이페이지 → Open API에서 Access Key, Secret Key를 발급받습니다.
+    앱 설정 → API 키 등록에서 위 두 값을 입력해 저장하면 서버에 암호화되어 저장됩니다.
+
+Q10. 봇을 멈추고 싶어요.
+A10. 앱 대시보드에서 "봇 정지"를 누르면 서버에서 해당 사용자 봇이 종료됩니다.
+
+--------------------------------------------------------------------------------
+■ Part 2. 에러 시 대처법 (질문·답변)
+--------------------------------------------------------------------------------
+
+Q11. curl http://127.0.0.1:8000/health 를 했는데 아무것도 안 나와요 / 연결이 거부돼요.
+A11. 서버가 안 떠 있는 상태일 수 있습니다.
+     (1) 서비스 사용 중이면: sudo systemctl status upbit-backend 로 상태 확인. "active (running)" 이 아니면 실패한 것입니다.
+     (2) 로그 확인: sudo journalctl -u upbit-backend -n 40 --no-pager
+         여기서 ValidationError, "Extra inputs are not permitted" 가 나오면 Q12를 보세요.
+     (3) 포트 확인: ss -tlnp | grep 8000 에 아무것도 안 나오면 8000에서 리스닝 중인 프로세스가 없는 것입니다.
+     (4) 수동 실행: cd backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000
+         터미널에 나오는 에러 메시지를 확인하세요.
+
+Q12. journalctl 에 "Extra inputs are not permitted", smtp_host / smtp_port / email_from ... validation error 가 나와요.
+A12. 서버의 backend/app/config.py 가 예전 버전이라 .env 에 있는 이메일(SMTP) 변수를 읽지 못하는 경우입니다.
+     해결 1) Jetson에서 config.py 를 열어, GOOGLE_APPLICATION_CREDENTIALS 다음에 이메일용 설정 블록이 있는지 확인합니다.
+            없으면 다음을 추가합니다:
+            # 이메일 발송 (회원가입 인증·축하 메일)
+            SMTP_HOST: str = ""
+            SMTP_PORT: int = 587
+            SMTP_USER: str = ""
+            SMTP_PASSWORD: str = ""
+            EMAIL_FROM: str = "배짱이 <noreply@example.com>"
+            VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
+            그리고 class Config: 안에 extra = "ignore" 가 있는지 확인, 없으면 추가합니다.
+     해결 2) PC에서 최신 config.py 를 GitHub에 푸시한 뒤, Jetson에서 git pull 후 sudo systemctl restart upbit-backend
+     상세 단계는 docs/서버_설치_빠른시작.md 의 "서버가 안 뜰 때 (Jetson)" 섹션을 보세요.
+
+Q13. systemctl status 로 보니 upbit-backend 가 failed / activating (auto-restart) 예요.
+A13. 백엔드가 기동 직후 종료되고 있다는 뜻입니다. Q12 와 같이 config.py·.env 불일치(또는 Pydantic 오류)인 경우가 많습니다.
+     sudo journalctl -u upbit-backend -n 50 --no-pager 로 마지막 에러 메시지를 확인한 뒤,
+     "Extra inputs" 이면 Q12, 그 외 ModuleNotFoundError/ImportError 등이면 해당 모듈·경로를 확인하세요.
+
+Q14. 서비스는 active (running) 인데 curl 이 여전히 연결 거부예요.
+A14. 방금 재시작된 직후일 수 있습니다. 다시 한 번 curl -s http://127.0.0.1:8000/health 를 해 보세요.
+     curl -v http://127.0.0.1:8000/health 로 상세 출력을 보면 연결 성공 여부와 응답 내용을 확인할 수 있습니다.
+     Tailscale로 접속할 때는 curl -s http://본인Jetson의TailscaleIP:8000/health 로도 확인해 보세요.
+
+Q15. 앱을 켰는데 화면이 비어 있어요 / 회색만 나와요.
+A15. 앱이 첫 화면을 그리기 전에 오류가 나거나, 라우터 초기화가 늦어질 때 발생할 수 있습니다.
+     최신 빌드에는 스플래시 화면과 오류 대응이 들어가 있어 개선되어 있습니다. 그래도 발생하면:
+     - 앱을 완전히 종료 후 다시 실행해 보세요.
+     - 설정 → API 서버 주소가 올바른지, 해당 서버가 실제로 동작 중인지(브라우저에서 /health 확인) 확인하세요.
+
+Q16. 앱에서 "연결이 안 됩니다" / "잠시 후 다시 시도" 가 나와요.
+A16. 앱이 설정한 API 서버 주소로 접속하지 못하는 상태입니다.
+     - 서버가 켜져 있는지 확인: 브라우저나 curl 로 http://서버주소:8000/health 호출
+     - 같은 네트워크인지 확인 (같은 Wi‑Fi 또는 Tailscale 같은 계정)
+     - 주소 형식: http:// 까지 포함, 끝에 / 없이 :8000 까지 (예: http://100.80.178.45:8000)
+     설정 화면의 API 서버 주소 안내 문구("연결이 안 되면 주소와 백엔드 실행 여부를 확인하세요")를 참고하세요.
+
+Q17. 로그인 시 "계정이 일시 잠금되었습니다" 가 나와요.
+A17. 로그인을 여러 번 실패하면 일정 시간(예: 15분) 동안 잠금됩니다. 메시지에 나온 시간이 지난 뒤 다시 시도하세요.
+
+Q18. 회원가입 시 "이메일 발송이 설정되지 않았습니다" (503) 가 나와요.
+A18. 서버 .env 에 SMTP 설정이 없거나 비어 있습니다. Q7 을 참고해 SMTP_HOST, SMTP_USER, SMTP_PASSWORD 등을 설정한 뒤
+     서버를 재시작하세요. SMTP를 쓰지 않으려면 서버 측에서 인증 없이 가입되도록 구성되어 있는지 문서를 확인하세요.
+
+--------------------------------------------------------------------------------
+■ 참고 문서 (저장소 내)
+--------------------------------------------------------------------------------
+- README.md                 : 빠른 실행, 프로젝트 구조, 문서 링크
+- docs/서버_설치_빠른시작.md : PC/Jetson 서버 설치·이메일(SMTP)·서버 안 뜰 때 대처
+- docs/서버_설치_Jetson_Tailscale.md : Jetson + Tailscale 단계별 설치
+- docs/배포_가이드.md       : 환경변수, systemd, Docker, 점검 체크리스트
+- docs/에러_대응_가이드.md   : 앱/서버 에러 유형별 대응 요약 (개발·검증 참고)
+
+================================================================================
+문서 끝.
+================================================================================

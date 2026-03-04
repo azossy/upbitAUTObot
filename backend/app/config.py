@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # .env에만 있고 여기 없는 변수는 무시(구버전 배포 시 기동 실패 방지)
 
 
 settings = Settings()

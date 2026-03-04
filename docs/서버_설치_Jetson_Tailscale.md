@@ -5,7 +5,7 @@
 Jetson Orin Nano Super 8GB (Ubuntu)에 백엔드를 설치하고, **Tailscale**로 포트포워딩 없이 현재 PC·스마트폰에서 접속하는 방법입니다.
 
 **※ 본인 Jetson Tailscale IP**: `100.80.178.45`  
-- SSH: `ssh 사용자명@100.80.178.45`  
+- SSH: `ssh upbit@100.80.178.45`  
 - 앱 API 서버 주소: `http://100.80.178.45:8000`
 
 ---
@@ -65,10 +65,10 @@ PowerShell 또는 CMD에서:
 ssh 사용자명@Jetson의TailscaleIP
 ```
 
-예: Jetson Ubuntu 사용자명이 `jetson`이고 Tailscale IP가 `100.101.102.103` 이면:
+예: Jetson SSH 사용자명 `upbit`, Tailscale IP `100.80.178.45`:
 
 ```powershell
-ssh jetson@100.101.102.103
+ssh upbit@100.80.178.45
 ```
 
 처음 접속 시 fingerprint 확인 메시지에서 `yes` 입력.  
@@ -108,8 +108,8 @@ cd upbitAUTObot
 PC PowerShell에서 (Tailscale로 연결된 상태에서):
 
 ```powershell
-scp -r "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend" jetson@100.101.102.103:~/
-scp "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend\.env.example" jetson@100.101.102.103:~/backend/
+scp -r "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend" upbit@100.80.178.45:~/
+scp "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend\.env.example" upbit@100.80.178.45:~/backend/
 ```
 
 Jetson에서는:
@@ -167,7 +167,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 sudo nano /etc/systemd/system/upbit-backend.service
 ```
 
-아래 내용 붙여넣고, **User**, **경로**를 본인 환경에 맞게 수정합니다. (예: 사용자명 `jetson`, 경로 `/home/jetson/upbitAUTObot/backend`)
+아래 내용 붙여넣고, 경로가 다르면 수정합니다. (사용자명 `upbit`, 경로 `/home/upbit/upbitAUTObot/backend`)
 
 ```ini
 [Unit]
@@ -177,10 +177,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=jetson
-WorkingDirectory=/home/jetson/upbitAUTObot/backend
-EnvironmentFile=/home/jetson/upbitAUTObot/backend/.env
-ExecStart=/home/jetson/upbitAUTObot/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=upbit
+WorkingDirectory=/home/upbit/upbitAUTObot/backend
+EnvironmentFile=/home/upbit/upbitAUTObot/backend/.env
+ExecStart=/home/upbit/upbitAUTObot/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 

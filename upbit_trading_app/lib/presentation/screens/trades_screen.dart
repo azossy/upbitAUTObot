@@ -150,11 +150,22 @@ class _TradesScreenState extends ConsumerState<TradesScreen> {
                         color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.5),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                              Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error, size: 22),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton.icon(
+                                onPressed: () { setState(() => _error = null); _fetch(); },
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: const Text('다시 시도'),
+                              ),
                             ],
                           ),
                         ),

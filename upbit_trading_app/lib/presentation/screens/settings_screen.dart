@@ -251,6 +251,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveConfig() async {
     final stopLoss = double.tryParse(_stopLossController.text) ?? 2.5;
     final takeProfit = double.tryParse(_takeProfitController.text) ?? 7.0;
+    if (stopLoss < 0 || stopLoss > 100 || takeProfit < 0 || takeProfit > 100) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('손절 %·익절 %는 0~100 사이로 입력하세요.')),
+        );
+      }
+      return;
+    }
     try {
       await ref.read(apiServiceProvider).updateBotConfig(
             maxInvestmentRatio: _investmentRatio,
@@ -353,6 +361,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: const InputDecoration(
                         labelText: 'API 서버 주소',
                         hintText: 'http://100.80.178.45:8000',
+                        helperText: '연결이 안 되면 주소와 백엔드 실행 여부를 확인하세요.',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.url,
