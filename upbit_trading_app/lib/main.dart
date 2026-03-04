@@ -4,7 +4,6 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'app.dart';
 import 'config/oauth_config.dart';
 import 'services/notification_service.dart';
-import 'theme/app_theme.dart';
 
 /// 루트에서 첫 프레임에 무조건 스플래시를 그려 빈 화면 방지. (Riverpod·GoRouter 의존 없음)
 class _SplashGate extends StatefulWidget {
@@ -20,8 +19,11 @@ class _SplashGateState extends State<_SplashGate> {
   @override
   void initState() {
     super.initState();
+    // 최소 500ms 스플래시 표시 후 앱 전환 — 첫 프레임이 실제로 그려지도록 유지
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _showApp = true);
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) setState(() => _showApp = true);
+      });
     });
   }
 
@@ -30,6 +32,10 @@ class _SplashGateState extends State<_SplashGate> {
     if (!_showApp) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0381FE), brightness: Brightness.light),
+        ),
         home: Scaffold(
           backgroundColor: const Color(0xFFFAFAFA),
           body: SafeArea(

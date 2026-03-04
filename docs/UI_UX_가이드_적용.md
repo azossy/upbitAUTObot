@@ -1,7 +1,7 @@
 # 배짱이 v1.1 — UI/UX 가이드 적용 (One UI 기준)
 
 **저작자**: 차리 (challychoi@me.com)  
-**참조 문서**: `c:\Users\chall\Desktop\파이썬공부방\ui-ux 가이드\oneui_design_guide_kor.pdf`  
+**참조 문서**: `c:\Users\chall\Desktop\myProject\ui-ux 가이드\oneui_design_guide_kor.pdf`  
 **목적**: 기획·개발 시 UI/UX 일관성 유지. 새 화면·기능 추가 시 본 문서와 One UI 가이드를 함께 참고.
 
 ---
@@ -55,5 +55,5 @@
 ## 5. 기획관 역할
 
 - 기능 기획 시 **어떤 화면·어디에 무엇을 배치할지** One UI 구조(보는 영역/인터랙션, 포커스 블록)를 전제로 정리.
-- 123.txt 작업 지시·기획_다음단계.md에 **UI/UX 요구사항**을 필요한 만큼 명시 (예: "비밀번호 변경 화면은 One UI 기준, 하단에 확인 버튼").
+- 123(화이트보드) 작업 지시·기획_다음단계.md에 **UI/UX 요구사항**을 필요한 만큼 명시 (예: "비밀번호 변경 화면은 One UI 기준, 하단에 확인 버튼").
 - 개발관이 새 UI 작업 시 본 문서와 One UI PDF를 참고해 구현하도록 안내.

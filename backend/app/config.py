@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "배짱이 <noreply@example.com>"
-    VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 1
 
     # 서버
     DEBUG: bool = False

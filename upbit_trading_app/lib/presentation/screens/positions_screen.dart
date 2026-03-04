@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../services/api_service.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/locale_provider.dart';
@@ -74,7 +75,7 @@ class _PositionsScreenState extends ConsumerState<PositionsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '데이터 로드 실패';
+          _error = getApiErrorMessage(e, fallback: '데이터 로드 실패');
           _loading = false;
         });
       }

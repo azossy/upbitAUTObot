@@ -102,12 +102,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       } else {
         await api.startBot();
       }
-      _botRunning = !_botRunning;
-      _fetch();
+      if (mounted) {
+        setState(() => _botRunning = !_botRunning);
+        _fetch();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getApiErrorMessage(e, fallback: '봇 제어에 실패했습니다.'))),
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: '봇 제어에 실패했습니다.')),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -415,7 +420,7 @@ class _PositionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = pnl >= 0 ? Colors.red : Colors.blue;
+    final color = pnl >= 0 ? Colors.green : Colors.red;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(

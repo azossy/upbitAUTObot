@@ -292,6 +292,19 @@ async def add_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # 상용앱: 동일 사용자·동일 거래소(업비트) 활성 키 1개만 허용 — 중복 등록 방지
+    existing = await db.execute(
+        select(ApiKey).where(
+            ApiKey.user_id == user.id,
+            ApiKey.exchange == "upbit",
+            ApiKey.is_active == True,
+        )
+    )
+    if existing.scalars().first() is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="이미 업비트 API 키가 등록되어 있습니다. 기존 키를 삭제한 후 다시 등록해 주세요.",
+        )
     api_key = ApiKey(
         user_id=user.id,
         exchange="upbit",
@@ -333,6 +346,6 @@ async def delete_api_key(
     key = result.scalar_one_or_none()
     if not key:
         raise HTTPException(status_code=404, detail="API 키를 찾을 수 없음")
-    await db.delete(key)
+    db.delete(key)  # SQLAlchemy 2.0 AsyncSession: delete는 동기 메서드
     await db.commit()
     return MessageResponse(message="API 키가 삭제되었습니다")

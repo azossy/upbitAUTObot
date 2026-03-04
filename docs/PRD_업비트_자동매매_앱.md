@@ -115,7 +115,7 @@
 |------|----------|
 | 보안 | API Key AES-256 암호화, JWT 인증, 출금 권한 비활성화 권장 |
 | 성능 | 업비트 Rate Limit 초당 10회 준수 |
-| UI/UX | One UI 디자인 가이드 준수 ([참조](c:\Users\chall\Desktop\파이썬공부방\ui-ux 가이드\oneui_design_guide_kor.pdf)) |
+| UI/UX | One UI 디자인 가이드 준수 ([참조](c:\Users\chall\Desktop\myProject\ui-ux 가이드\oneui_design_guide_kor.pdf)) |
 | 접근성 | WCAG 준수, 텍스트 200% 확대 지원 |
 
 ---

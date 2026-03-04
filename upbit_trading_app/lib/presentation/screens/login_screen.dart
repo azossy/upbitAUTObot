@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
   String? _error;
   bool _showBiometricButton = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -232,11 +234,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: '비밀번호',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _onLogin(),
                     ),
@@ -291,8 +300,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: _loading
                             ? null
                             : () {
-                                final router = GoRouter.of(context);
-                                router.push('/register');
+                                final nav = Navigator.of(context, rootNavigator: true);
+                                nav.push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const RegisterScreen(),
+                                  ),
+                                );
                               },
                         style: TextButton.styleFrom(
                           minimumSize: const Size(120, 48),

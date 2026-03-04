@@ -106,27 +106,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final url = _apiBaseUrlController.text.trim();
     if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('주소를 입력하세요. http:// 또는 https:// 로 시작해야 합니다.')),
+        const SnackBar(
+          content: Text('주소를 입력하세요. http:// 또는 https:// 로 시작해야 합니다.'),
+          duration: Duration(seconds: 4),
+        ),
       );
       return;
     }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('주소는 http:// 또는 https:// 로 시작해야 합니다.')),
+        const SnackBar(
+          content: Text('주소는 http:// 또는 https:// 로 시작해야 합니다.'),
+          duration: Duration(seconds: 4),
+        ),
       );
       return;
     }
     final ok = await ApiService.saveBaseUrl(url);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('저장에 실패했습니다.')),
+        const SnackBar(
+          content: Text('저장에 실패했습니다.'),
+          duration: Duration(seconds: 4),
+        ),
       );
       return;
     }
     ref.read(apiServiceProvider).updateBaseUrl(url);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API 서버 주소가 저장되었습니다.')),
+        const SnackBar(
+          content: Text('API 서버 주소가 저장되었습니다.'),
+          duration: Duration(seconds: 3),
+        ),
       );
     }
   }
@@ -135,52 +147,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final accessController = TextEditingController();
     final secretController = TextEditingController();
     final labelController = TextEditingController(text: '메인계정');
+    bool obscureSecret = true;
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('API 키 추가'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: accessController,
-                decoration: const InputDecoration(
-                  labelText: 'Access Key',
-                  border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('API 키 추가'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '업비트 API 키는 1개만 등록할 수 있습니다. 이미 등록된 키가 있으면 삭제 후 다시 등록하세요.',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: secretController,
-                decoration: const InputDecoration(
-                  labelText: 'Secret Key',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: accessController,
+                  decoration: const InputDecoration(
+                    labelText: 'Access Key',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: '라벨 (선택)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: secretController,
+                  decoration: InputDecoration(
+                    labelText: 'Secret Key',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureSecret ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      ),
+                      onPressed: () => setDialogState(() => obscureSecret = !obscureSecret),
+                      style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                    ),
+                  ),
+                  obscureText: obscureSecret,
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: labelController,
+                  decoration: const InputDecoration(
+                    labelText: '라벨 (선택)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('추가'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('추가'),
-          ),
-        ],
       ),
     );
 
@@ -195,14 +223,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('API 키가 등록되었습니다')),
+            const SnackBar(
+              content: Text('API 키가 등록되었습니다'),
+              duration: Duration(seconds: 3),
+            ),
           );
           _fetch();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(getApiErrorMessage(e, fallback: 'API 키 등록 실패'))),
+            SnackBar(
+              content: Text(getApiErrorMessage(e, fallback: 'API 키 등록 실패')),
+              duration: const Duration(seconds: 4),
+            ),
           );
         }
       }
@@ -234,14 +268,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await ref.read(apiServiceProvider).deleteApiKey(id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('API 키가 삭제되었습니다')),
+            const SnackBar(
+              content: Text('API 키가 삭제되었습니다'),
+              duration: Duration(seconds: 3),
+            ),
           );
           _fetch();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(getApiErrorMessage(e, fallback: 'API 키 삭제 실패'))),
+            SnackBar(
+              content: Text(getApiErrorMessage(e, fallback: 'API 키 삭제 실패')),
+              duration: const Duration(seconds: 4),
+            ),
           );
         }
       }
@@ -251,10 +291,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveConfig() async {
     final stopLoss = double.tryParse(_stopLossController.text) ?? 2.5;
     final takeProfit = double.tryParse(_takeProfitController.text) ?? 7.0;
-    if (stopLoss < 0 || stopLoss > 100 || takeProfit < 0 || takeProfit > 100) {
+      if (stopLoss < 0 || stopLoss > 100 || takeProfit < 0 || takeProfit > 100) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('손절 %·익절 %는 0~100 사이로 입력하세요.')),
+          const SnackBar(
+            content: Text('손절 %·익절 %는 0~100 사이로 입력하세요.'),
+            duration: Duration(seconds: 4),
+          ),
         );
       }
       return;
@@ -269,14 +312,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('설정이 저장되었습니다')),
+          const SnackBar(
+            content: Text('설정이 저장되었습니다'),
+            duration: Duration(seconds: 3),
+          ),
         );
         _fetch();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getApiErrorMessage(e, fallback: '설정 저장 실패'))),
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: '설정 저장 실패')),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -344,10 +393,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // API 서버 주소 (기획 5차 — 서버 URL 설정)
+            // 서버 주소 바꾸기 — 기본값은 Jetson, 바뀌면 여기서 새 주소 입력·저장
             Text(
-              '연결',
+              '서버 주소 바꾸기',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '기본은 우리 Jetson 서버입니다. 서버 주소가 바뀌면 아래에 새 주소를 입력한 뒤 저장하세요.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             Card(
@@ -361,7 +415,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: const InputDecoration(
                         labelText: 'API 서버 주소',
                         hintText: 'http://100.80.178.45:8000',
-                        helperText: '연결이 안 되면 주소와 백엔드 실행 여부를 확인하세요.',
+                        helperText: 'http:// 또는 https:// 로 시작. 연결이 안 되면 주소와 백엔드 실행 여부를 확인하세요.',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.url,
@@ -370,7 +424,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: _saveApiBaseUrl,
-                      child: const Text('저장'),
+                      child: const Text('서버 주소 저장'),
                     ),
                   ],
                 ),

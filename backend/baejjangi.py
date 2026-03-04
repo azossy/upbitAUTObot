@@ -2,18 +2,32 @@
 """
 배짱이 v1.1 — 운영용 CLI
 설정(텔레그램·이메일 등)을 문답식으로 변경 후 backend/.env에 반영.
-실행: python baejjangi.py [--help] | python baejjangi.py set (telegram|email) [--help]
-      또는 프로젝트 루트에서: python backend/baejjangi.py ...
+메일/텔레그램/카카오 설정 테스트: baejjangi test (mail|telegram|kakao)
+실행: baejjangi [--help] | baejjangi set (telegram|email) | baejjangi test (mail|telegram|kakao)
+      컴파일 후: ./baejjangi 또는 baejjangi.exe
 """
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
 
-# 기본 .env 경로: 이 스크립트와 같은 디렉터리
-DEFAULT_ENV = Path(__file__).resolve().parent / ".env"
+# PyInstaller onefile 시 실행 파일 기준 디렉터리 사용
+if getattr(sys, "frozen", False):
+    _BACKEND_DIR = Path(sys.executable).resolve().parent
+else:
+    _BACKEND_DIR = Path(__file__).resolve().parent
+
+# backend 디렉터리를 path에 넣어 app 임포트 가능하게 (프로젝트 루트에서 실행해도 동작)
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
+# 기본 .env 경로: 실행 파일/스크립트와 같은 디렉터리
+DEFAULT_ENV = _BACKEND_DIR / ".env"
+
+BAEJJANGI_VERSION = "1.1.0"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -75,23 +89,174 @@ def cmd_set_email(env_path: Path) -> None:
     data["EMAIL_FROM"] = prompt("EMAIL_FROM", data.get("EMAIL_FROM", "배짱이 <noreply@example.com>"))
     data["VERIFICATION_CODE_EXPIRE_MINUTES"] = prompt(
         "VERIFICATION_CODE_EXPIRE_MINUTES",
-        str(data.get("VERIFICATION_CODE_EXPIRE_MINUTES", "10")),
+        str(data.get("VERIFICATION_CODE_EXPIRE_MINUTES", "1")),
     )
     write_env(env_path, data)
     print(f".env 반영됨: {env_path}")
 
 
+def _load_env_into_os(env_path: Path) -> None:
+    """테스트 명령에서 사용: .env 값을 os.environ에 넣어 app.config가 읽도록."""
+    for k, v in parse_env(env_path).items():
+        os.environ.setdefault(k, v)
+    # pydantic-settings는 env_file을 cwd 기준으로 찾을 수 있으므로, 명시적으로 지정된 경로 적용
+    os.environ.setdefault("ENV_FILE", str(env_path))
+
+
+def _send_test_email_from_env(env_path: Path, to: str) -> tuple[bool, str | None]:
+    """.env의 SMTP 설정으로 테스트 메일 발송. (성공여부, 실패 시 오류 메시지) 반환."""
+    import smtplib
+    import ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    data = parse_env(env_path)
+    host = (data.get("SMTP_HOST") or "").strip()
+    user = (data.get("SMTP_USER") or "").strip()
+    password = (data.get("SMTP_PASSWORD") or "").strip()
+    if not host or not user or not password:
+        return False, "SMTP_HOST, SMTP_USER, SMTP_PASSWORD 중 누락"
+    port = int(data.get("SMTP_PORT", "587") or "587")
+    from_addr = (data.get("EMAIL_FROM") or "배짱이 <noreply@example.com>").strip()
+    subject = "[배짱이] 메일 설정 테스트"
+    body = "배짱이 CLI(baejjangi test mail)에서 발송한 테스트 메일입니다. 설정이 정상입니다."
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(host, port) as server:
+            if port == 587:
+                server.starttls(context=ctx)
+            server.login(user, password)
+            server.sendmail(user, to, msg.as_string())
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def cmd_test_mail(env_path: Path) -> int:
+    """메일(SMTP) 설정 테스트: .env의 SMTP로 테스트 메일 1통 발송. app 패키지 없이 동작."""
+    data = parse_env(env_path)
+    if not (data.get("SMTP_HOST") and data.get("SMTP_USER") and data.get("SMTP_PASSWORD")):
+        print("오류: SMTP가 설정되지 않았습니다. baejjangi set email 으로 설정 후 시도하세요.")
+        return 1
+    to = prompt("테스트 수신 이메일 주소", "").strip()
+    if not to:
+        print("수신 주소가 비어 있어 건너뜁니다.")
+        return 0
+    ok, err = _send_test_email_from_env(env_path, to)
+    if ok:
+        print(f"성공: {to} 로 테스트 메일을 발송했습니다. 메일함을 확인하세요.")
+        return 0
+    print("실패: 메일 발송에 실패했습니다. SMTP 호스트/포트/계정/비밀번호를 확인하세요.")
+    if err:
+        print(f"상세: {err}")
+    return 1
+
+
+def cmd_test_telegram(env_path: Path) -> int:
+    """텔레그램 설정 테스트: .env의 봇 토큰·Chat ID로 테스트 메시지 1통 발송."""
+    _load_env_into_os(env_path)
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.environ.get("TELEGRAM_DEFAULT_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        print("오류: TELEGRAM_BOT_TOKEN 또는 TELEGRAM_DEFAULT_CHAT_ID가 비어 있습니다. baejjangi set telegram 으로 설정하세요.")
+        return 1
+    try:
+        import httpx
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(url, json={"chat_id": chat_id.strip(), "text": "배짱이 CLI 테스트 메시지입니다. 텔레그램 설정이 정상입니다."})
+        if r.status_code == 200:
+            print("성공: 텔레그램으로 테스트 메시지를 보냈습니다. 앱/채팅을 확인하세요.")
+            return 0
+        print(f"실패: API 응답 {r.status_code} - {r.text[:200]}")
+        return 1
+    except Exception as e:
+        print(f"실패: {e}")
+        return 1
+
+
+def cmd_test_kakao(env_path: Path) -> int:
+    """카카오(로그인) 설정 확인: KAKAO_REST_API_KEY가 설정되어 있는지 확인."""
+    _load_env_into_os(env_path)
+    key = os.environ.get("KAKAO_REST_API_KEY", "").strip()
+    if not key:
+        print("오류: KAKAO_REST_API_KEY가 비어 있습니다. 카카오 개발자 콘솔에서 REST API 키를 .env에 설정하세요.")
+        return 1
+    print("확인: KAKAO_REST_API_KEY가 설정되어 있습니다. (앱에서 카카오 로그인 사용 가능)")
+    return 0
+
+
+def _mask(value: str) -> str:
+    """민감 정보 마스킹: 앞뒤 일부만 보여주고 중간은 ***."""
+    if not value or len(value) <= 4:
+        return "***" if value else "(비어 있음)"
+    return value[:2] + "***" + value[-2:] if len(value) > 6 else "***"
+
+
+def cmd_config(env_path: Path) -> int:
+    """현재 .env 설정 요약 표시 (민감정보 마스킹)."""
+    data = parse_env(env_path)
+    if not data:
+        print(f".env 파일이 없거나 비어 있습니다: {env_path}")
+        return 0
+    sensitive = {"SMTP_PASSWORD", "JWT_SECRET_KEY", "ENCRYPTION_KEY", "TELEGRAM_BOT_TOKEN"}
+    print(f"--- .env 설정 요약 ({env_path}) ---")
+    for k in sorted(data.keys()):
+        v = data[k]
+        if k in sensitive and v:
+            v = _mask(v)
+        elif len(v) > 60:
+            v = v[:30] + "...(생략)"
+        print(f"  {k}={v}")
+    return 0
+
+
+def cmd_health(base_url: str) -> int:
+    """서버 /health 엔드포인트 체크."""
+    try:
+        import httpx
+        url = base_url.rstrip("/") + "/health"
+        with httpx.Client(timeout=5.0) as client:
+            r = client.get(url)
+        if r.status_code == 200:
+            body = r.json()
+            print(f"서버 정상: {body.get('status', 'ok')} (version: {body.get('version', '?')})")
+            return 0
+        print(f"실패: HTTP {r.status_code} - {r.text[:200]}")
+        return 1
+    except Exception as e:
+        print(f"실패: {e}")
+        return 1
+
+
 def main() -> int:
+    # 옵션 없이 실행 시 안내만 출력
+    if len(sys.argv) == 1:
+        print("사용법: baejjangi --help 를 입력하세요")
+        return 0
+
     parser = argparse.ArgumentParser(
         prog="baejjangi",
-        description="배짱이 v1.1 운영용 CLI. 텔레그램/이메일 등 설정을 문답식으로 변경 후 .env에 반영.",
+        description="배짱이 v1.1 운영용 CLI. 설정(텔레그램/이메일 등) 변경 및 메일·텔레그램·카카오 테스트.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 예시:
+  baejjangi                    사용법 안내 (baejjangi --help 를 입력하세요)
   baejjangi --help
-  baejjangi set telegram
-  baejjangi set email
-  baejjangi --env-file /path/to/.env set telegram
+  baejjangi --version          버전 표시
+  baejjangi config             .env 설정 요약 (민감정보 마스킹)
+  baejjangi health [--url URL] 서버 /health 체크
+  baejjangi set telegram       텔레그램 설정
+  baejjangi set email          이메일(SMTP) 설정
+  baejjangi test mail          메일 발송 테스트
+  baejjangi test telegram      텔레그램 발송 테스트
+  baejjangi test kakao         카카오 로그인 설정 확인
+  baejjangi --env-file /path/to/.env test mail
         """,
     )
     parser.add_argument(
@@ -99,6 +264,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_ENV,
         help=f".env 파일 경로 (기본: {DEFAULT_ENV})",
+    )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="버전 표시",
     )
     sub = parser.add_subparsers(dest="command", title="서브커맨드")
 
@@ -119,7 +289,32 @@ def main() -> int:
     )
     em.set_defaults(func=lambda a: cmd_set_email(a.env_file))
 
+    test_p = sub.add_parser("test", help="메일·텔레그램·카카오 설정 테스트 (Jetson 등 서버에서 동작 확인)")
+    test_sub = test_p.add_subparsers(dest="test_what", title="테스트 항목")
+    test_mail = test_sub.add_parser("mail", help="SMTP 설정 테스트: 테스트 메일 1통 발송")
+    test_mail.set_defaults(func=lambda a: cmd_test_mail(a.env_file))
+    test_telegram = test_sub.add_parser("telegram", help="텔레그램 설정 테스트: 테스트 메시지 1통 발송")
+    test_telegram.set_defaults(func=lambda a: cmd_test_telegram(a.env_file))
+    test_kakao = test_sub.add_parser("kakao", help="카카오 로그인 설정 확인 (KAKAO_REST_API_KEY)")
+    test_kakao.set_defaults(func=lambda a: cmd_test_kakao(a.env_file))
+
+    config_p = sub.add_parser("config", help="현재 .env 설정 요약 (민감정보 마스킹)")
+    config_p.set_defaults(func=lambda a: cmd_config(a.env_file))
+
+    health_p = sub.add_parser("health", help="서버 /health 엔드포인트 체크")
+    health_p.add_argument(
+        "--url",
+        type=str,
+        default="http://127.0.0.1:8000",
+        help="API 서버 주소 (기본: http://127.0.0.1:8000)",
+    )
+    health_p.set_defaults(func=lambda a: cmd_health(a.url))
+
     args = parser.parse_args()
+
+    if getattr(args, "version", False):
+        print(f"baejjangi {BAEJJANGI_VERSION}")
+        return 0
 
     if args.command is None:
         parser.print_help()
@@ -127,10 +322,13 @@ def main() -> int:
     if args.command == "set" and args.set_what is None:
         set_p.print_help()
         return 0
+    if args.command == "test" and args.test_what is None:
+        test_p.print_help()
+        return 0
 
     if hasattr(args, "func") and args.func:
-        args.func(args)
-        return 0
+        out = args.func(args)
+        return int(out) if isinstance(out, int) else 0
     parser.print_help()
     return 0
 

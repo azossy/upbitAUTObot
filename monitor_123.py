@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-123.txt 자동 모니터링 스크립트 (검증관/테스트 에이전트 대리)
-- 123.txt를 주기적으로 확인하여 "검증관 할당 작업"에 검증 요청이 올라오면
-  자동으로 코드 검증(린트 등)을 수행하고, 결과를 123.txt에 반영한 뒤 할당 섹션을 정리합니다.
+123(화이트보드) 자동 모니터링 스크립트 (검증관/테스트 에이전트 대리)
+- 123.md(화이트보드)를 주기적으로 확인하여 "검증관 할당 작업"에 검증 요청이 올라오면
+  자동으로 코드 검증(린트 등)을 수행하고, 결과를 123.md에 반영한 뒤 할당 섹션을 정리합니다.
 - 사용법: 터미널에서 python monitor_123.py 실행 후 그대로 두면 됩니다.
   (중지: Ctrl+C)
 """
@@ -15,27 +15,27 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-# 스크립트와 123.txt가 같은 폴더에 있다고 가정
+# 스크립트와 123(화이트보드)가 같은 폴더에 있다고 가정
 BASE_DIR = Path(__file__).resolve().parent
-FILE_123 = BASE_DIR / "123.txt"
-CHECK_INTERVAL = 30  # 초 단위 (대기 시 30초마다 123 확인)
+FILE_123 = BASE_DIR / "123.md"
+CHECK_INTERVAL = 10  # 초 단위 (대기 시 10초마다 123 확인)
 BACKEND_APP = BASE_DIR / "backend" / "app"
 
 
 def read_123():
-    """123.txt 내용을 UTF-8로 읽기."""
+    """123(화이트보드) 내용을 UTF-8로 읽기."""
     try:
         return FILE_123.read_text(encoding="utf-8")
     except Exception as e:
-        print(f"[모니터] 123.txt 읽기 오류: {e}")
+        print(f"[모니터] 123.md 읽기 오류: {e}")
         return ""
 
 
 def has_verification_request(content: str) -> bool:
     """'검증관 할당 작업' 섹션에 검증 요청이 있는지 판단."""
-    # "■ 검증관 할당 작업" ~ 다음 "------" 구간만 추출
-    start_marker = "■ 검증관 할당 작업"
-    end_marker = "----------------------------------------------------------------------"
+    # "검증관 할당 작업" ~ 다음 "## 6." 구간만 추출 (123.md 구조)
+    start_marker = "검증관 할당 작업"
+    end_marker = "\n## 6."
     if start_marker not in content:
         return False
     start = content.find(start_marker)
@@ -91,7 +91,7 @@ def run_linter() -> tuple[str, int]:
 def get_recent_work_section(content: str) -> str:
     """'최근 작업 내역' 섹션 텍스트 추출 (검증 대상 안내용)."""
     start_marker = "최근 작업 내역 (개발관 기재)"
-    end_marker = "----------------------------------------------------------------------"
+    end_marker = "\n## 11."
     if start_marker not in content:
         return "(없음)"
     start = content.find(start_marker)
@@ -103,7 +103,7 @@ def get_recent_work_section(content: str) -> str:
 
 
 def update_123_with_verification(content: str, lint_result: str, lint_code: int) -> str:
-    """검증 결과로 123.txt 본문 중 '코드 검증 결과 및 작업지시서' 섹션과 '검증관 할당 작업' 섹션을 갱신."""
+    """검증 결과로 123.md 본문 중 '검증관 할당 작업' 섹션을 갱신하고, 검증 결과 블록을 추가."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     recent = get_recent_work_section(content)
 
@@ -128,7 +128,7 @@ def update_123_with_verification(content: str, lint_result: str, lint_code: int)
   2. 
   3. 
 
-※ [검증관]: 123.txt 확인 시 "검증관 할당 작업"에 검증 요청이 올라오면 위 항목을 채워 본 섹션을 갱신하고, 재작업이 필요하면 "작업지시서"에 개발관에게 전달할 항목을 번호로 적은 뒤 할당 섹션을 정리합니다.
+※ [검증관]: 123(화이트보드) 확인 시 "검증관 할당 작업"에 검증 요청이 올라오면 위 항목을 채워 본 섹션을 갱신하고, 재작업이 필요하면 "작업지시서"에 개발관에게 전달할 항목을 번호로 적은 뒤 할당 섹션을 정리합니다.
 """
 
     # "검증관 할당 작업"의 "현재 할당: ..." 한 줄을 처리 완료로 교체
@@ -138,7 +138,7 @@ def update_123_with_verification(content: str, lint_result: str, lint_code: int)
         + '). 상세 검토는 검증관(테스트 에이전트)에게 "123 상세검토해줘" 요청 시 갱신 가능.'
     )
 
-    # 기존 "=== 코드 검증 결과 및 작업지시서" ~ "할당 섹션을 정리합니다." 끝까지 한 블록 교체
+    # 123.md에는 기존 txt 형식 블록이 없으므로 검증 결과 블록을 문서 끝에 추가
     old_start = "=== 코드 검증 결과 및 작업지시서 (검증관 기재) ==="
     if old_start in content:
         start_idx = content.find(old_start)
@@ -161,11 +161,11 @@ def update_123_with_verification(content: str, lint_result: str, lint_code: int)
 
 
 def main():
-    print("123.txt 자동 모니터링을 시작합니다. 검증 요청이 올라오면 자동으로 검증 후 123.txt를 갱신합니다.")
+    print("123(화이트보드) 자동 모니터링을 시작합니다. 검증 요청이 올라오면 자동으로 검증 후 123.md를 갱신합니다.")
     print(f"확인 주기: {CHECK_INTERVAL}초 | 중지: Ctrl+C")
-    print(f"123.txt 경로: {FILE_123}")
+    print(f"123 경로: {FILE_123}")
     if not FILE_123.exists():
-        print("123.txt가 없습니다. 같은 폴더에 123.txt를 두고 다시 실행하세요.")
+        print("123.md가 없습니다. 프로젝트 루트에 123.md(화이트보드)를 두고 다시 실행하세요.")
         return
     while True:
         try:
@@ -175,7 +175,7 @@ def main():
                 lint_result, lint_code = run_linter()
                 new_content = update_123_with_verification(content, lint_result, lint_code)
                 FILE_123.write_text(new_content, encoding="utf-8")
-                print("[완료] 123.txt에 검증 결과 반영 및 할당 섹션 정리함. 다음 작업 대기 중.")
+                print("[완료] 123.md에 검증 결과 반영 및 할당 섹션 정리함. 다음 작업 대기 중.")
             else:
                 print(f"[{datetime.now():%H:%M:%S}] 할당 없음. 대기 중...")
         except KeyboardInterrupt:

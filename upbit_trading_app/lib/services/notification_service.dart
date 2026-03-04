@@ -18,9 +18,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class NotificationService {
   final ApiService _api;
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messaging;
 
   NotificationService(this._api);
+
+  /// Firebase 미설정 시 null. 생성 시점에 instance 접근하지 않아 웹/미설정에서 크래시 방지.
+  FirebaseMessaging? get _safeMessaging {
+    if (_messaging != null) return _messaging;
+    try {
+      if (Firebase.apps.isEmpty) return null;
+      _messaging = FirebaseMessaging.instance;
+      return _messaging;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Firebase 초기화 및 FCM 설정 (실패 시에도 앱은 정상 동작)
   static Future<bool> initialize() async {
@@ -42,8 +54,9 @@ class NotificationService {
   /// FCM 토큰 발급
   Future<String?> getToken() async {
     try {
-      if (Firebase.apps.isEmpty) return null;
-      return await _messaging.getToken();
+      final m = _safeMessaging;
+      if (m == null) return null;
+      return await m.getToken();
     } catch (e) {
       debugPrint('[FCM] 토큰 발급 실패: $e');
       return null;
@@ -69,22 +82,33 @@ class NotificationService {
 
   /// 토큰 갱신 리스너 (주기적 갱신 시 서버에 재등록)
   void onTokenRefresh(void Function(String) onToken) {
-    _messaging.onTokenRefresh.listen(onToken);
+    final m = _safeMessaging;
+    if (m != null) m.onTokenRefresh.listen(onToken);
   }
 
-  /// 포그라운드 메시지 스트림
-  Stream<RemoteMessage> get onMessage => FirebaseMessaging.onMessage;
+  /// 포그라운드 메시지 스트림 (Firebase 미설정 시 빈 스트림)
+  Stream<RemoteMessage> get onMessage {
+    final m = _safeMessaging;
+    return m != null ? FirebaseMessaging.onMessage : const Stream.empty();
+  }
 
   /// 알림 탭 시 (앱이 백그라운드/종료 상태에서 열림)
-  Stream<RemoteMessage> get onMessageOpenedApp => FirebaseMessaging.onMessageOpenedApp;
+  Stream<RemoteMessage> get onMessageOpenedApp {
+    final m = _safeMessaging;
+    return m != null ? FirebaseMessaging.onMessageOpenedApp : const Stream.empty();
+  }
 
   /// 앱이 종료된 상태에서 알림 탭으로 실행된 경우
-  Future<RemoteMessage?> get initialMessage async =>
-      await FirebaseMessaging.instance.getInitialMessage();
+  Future<RemoteMessage?> get initialMessage async {
+    final m = _safeMessaging;
+    return m != null ? await m.getInitialMessage() : null;
+  }
 
   /// 알림 권한 요청 (iOS)
   Future<bool> requestPermission() async {
-    final settings = await _messaging.requestPermission(
+    final m = _safeMessaging;
+    if (m == null) return false;
+    final settings = await m.requestPermission(
       alert: true,
       badge: true,
       sound: true,

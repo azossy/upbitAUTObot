@@ -82,13 +82,19 @@ class _TradesScreenState extends ConsumerState<TradesScreen> {
       await Clipboard.setData(ClipboardData(text: csv));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('CSV가 클립보드에 복사되었습니다. 엑셀 등에 붙여넣기 하세요.')),
+          const SnackBar(
+            content: Text('CSV가 클립보드에 복사되었습니다. 엑셀 등에 붙여넣기 하세요.'),
+            duration: Duration(seconds: 3),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getApiErrorMessage(e, fallback: 'CSV 내보내기 실패'))),
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: 'CSV 내보내기 실패')),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }

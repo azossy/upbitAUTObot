@@ -27,8 +27,8 @@ alwaysApply: false
 - `get_db` Dependency, `init_db` 시작 시 테이블 생성
 
 ### 4. 참조 문서
-- [docs/API_명세서.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\API_명세서.md)
-- [docs/PRD_업비트_자동매매_앱.md](c:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\docs\PRD_업비트_자동매매_앱.md)
+- [docs/API_명세서.md](c:\Users\chall\Desktop\myProject\upbitAUTObot\docs\API_명세서.md)
+- [docs/PRD_업비트_자동매매_앱.md](c:\Users\chall\Desktop\myProject\upbitAUTObot\docs\PRD_업비트_자동매매_앱.md)
 
 ## 작업 시
 - 기존 `backend/` 구조 준수

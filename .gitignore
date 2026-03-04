@@ -5,6 +5,11 @@
 backend/.env
 upbit-trading-system/.env
 
+# 팀 전용 암호화 자격증명 (저장소에 올리지 않음)
+secrets/
+*.jetson.enc
+*jetson*access*.txt
+
 # Python
 __pycache__/
 *.py[cod]

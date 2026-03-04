@@ -37,11 +37,12 @@ def send_email(to: str, subject: str, body_text: str, body_html: str | None = No
 
 def send_verification_email(to: str, code: str) -> bool:
     subject = "[배짱이] 이메일 인증 번호"
+    mins = settings.VERIFICATION_CODE_EXPIRE_MINUTES
     body = f"""배짱이 회원가입을 위한 인증 번호입니다.
 
 인증 번호: {code}
 
-유효 시간은 10분입니다. 해당 번호를 앱에 입력해 주세요."""
+유효 시간은 {mins}분입니다. 해당 번호를 앱에 입력해 주세요."""
     return send_email(to, subject, body)
 
 

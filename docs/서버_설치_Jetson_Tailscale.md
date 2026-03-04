@@ -108,8 +108,8 @@ cd upbitAUTObot
 PC PowerShell에서 (Tailscale로 연결된 상태에서):
 
 ```powershell
-scp -r "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend" upbit@100.80.178.45:~/
-scp "C:\Users\chall\Desktop\파이썬공부방\업비트 자동매매\backend\.env.example" upbit@100.80.178.45:~/backend/
+scp -r "C:\Users\chall\Desktop\myProject\upbitAUTObot\backend" upbit@100.80.178.45:~/
+scp "C:\Users\chall\Desktop\myProject\upbitAUTObot\backend\.env.example" upbit@100.80.178.45:~/backend/
 ```
 
 Jetson에서는:

@@ -58,7 +58,10 @@ class _PasswordChangeScreenState extends ConsumerState<PasswordChangeScreen> {
       await ref.read(apiServiceProvider).changePassword(current, newPw);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('비밀번호가 변경되었습니다.')),
+          const SnackBar(
+            content: Text('비밀번호가 변경되었습니다.'),
+            duration: Duration(seconds: 3),
+          ),
         );
         context.pop();
       }
@@ -131,8 +134,9 @@ class _PasswordChangeScreenState extends ConsumerState<PasswordChangeScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                            _obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           ),
+                          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                           onPressed: () =>
                               setState(() => _obscureCurrent = !_obscureCurrent),
                         ),
@@ -147,8 +151,9 @@ class _PasswordChangeScreenState extends ConsumerState<PasswordChangeScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureNew ? Icons.visibility_off : Icons.visibility,
+                            _obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           ),
+                          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                           onPressed: () =>
                               setState(() => _obscureNew = !_obscureNew),
                         ),
@@ -163,8 +168,9 @@ class _PasswordChangeScreenState extends ConsumerState<PasswordChangeScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                            _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           ),
+                          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
                           onPressed: () =>
                               setState(() => _obscureConfirm = !_obscureConfirm),
                         ),

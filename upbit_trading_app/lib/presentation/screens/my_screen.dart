@@ -74,13 +74,18 @@ class _MyScreenState extends ConsumerState<MyScreen> {
       );
       if (mounted) {
         final l10n = ref.read(appLocalizationsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.saved)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.saved), duration: const Duration(seconds: 3)),
+        );
         _fetch();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getApiErrorMessage(e, fallback: '저장에 실패했습니다.'))),
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: '저장에 실패했습니다.')),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -114,13 +119,18 @@ class _MyScreenState extends ConsumerState<MyScreen> {
           _uploadingAvatar = false;
         });
         final l10n = ref.read(appLocalizationsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.saved)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.saved), duration: const Duration(seconds: 3)),
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(getApiErrorMessage(e, fallback: '사진 업로드에 실패했습니다.'))),
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: '사진 업로드에 실패했습니다.')),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
