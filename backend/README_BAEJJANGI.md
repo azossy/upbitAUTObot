@@ -56,8 +56,29 @@ python build_baejjangi.py
 | `baejjangi --stop` | systemd 서비스 `baejjangi-backend` 중지 |
 | `baejjangi --restart` | systemd 서비스 `baejjangi-backend` 재시작 |
 | `baejjangi --status` | systemd 서비스 `baejjangi-backend` 상태 출력 |
+| `baejjangi --update` | GitHub에서 최신 코드 pull, pip 설치, 서비스 재시작, health 검사 (**환경설정 .env 는 변경하지 않음**) |
+| `baejjangi --reinstall` | **클린 재설치**: 기존 설치 제거 후 저장소 클론·설정(.env/DB) 복원·venv·서비스 기동·서버 테스트(health/인증메일/로그인 API) 후 결과를 표로 출력 |
 
 위 옵션은 **리눅스**에서만 동작하며, Windows에서는 "리눅스에서만 지원됩니다" 메시지가 나옵니다.
+
+### --update 상세
+
+- 현재 프로젝트가 Git 저장소인지 확인 후 `git pull` 실행.
+- `backend/venv` 또는 시스템 `pip3`로 `pip install -r requirements.txt` 실행.
+- `systemctl restart baejjangi-backend` 후 `/health` 호출로 정상 기동 여부 확인.
+- 출력: 이전 버전 → 현재 버전, health 결과.
+
+### --reinstall 상세
+
+- **백업**: `backend/.env`, `backend/*.db` 를 임시 디렉터리로 복사.
+- **중지**: `baejjangi-backend` (및 구 서비스명 `upbit-backend`) 중지.
+- **클론**: 상위 디렉터리에 `baejjangi_new` 로 저장소 클론.
+- **복원**: 백업한 `.env`, `*.db` 를 `baejjangi_new/backend/` 에 복원.
+- **설치**: `baejjangi_new/backend` 에 venv 생성 및 `pip install -r requirements.txt`.
+- **systemd**: 기존 `upbit-backend.service` 가 있으면 `baejjangi-backend.service` 로 변경, 경로를 `baejjangi/backend` 로 통일.
+- **교체**: 기존 `baejjangi` 폴더를 `baejjangi_old` 로 이동 후, `baejjangi_new` 를 `baejjangi` 로 이동.
+- **기동**: `systemctl start baejjangi-backend` 후 서버 테스트(health, 인증메일 API, 로그인 API) 실행.
+- **출력**: 재설치 결과 표(health/인증메일/로그인 API 상태, 백엔드 버전).
 
 ## 사용자 목록 (--user)
 

@@ -238,10 +238,245 @@ def cmd_health(base_url: str) -> int:
 
 
 SYSTEMD_SERVICE = "baejjangi-backend"
+REPO_URL = "https://github.com/azossy/upbitAUTObot.git"
+INSTALL_DIR_NAME = "baejjangi"
 
 
 def _is_linux() -> bool:
     return sys.platform == "linux"
+
+
+def _project_root() -> Path:
+    """backend 디렉터리의 상위(프로젝트 루트, 예: ~/baejjangi)."""
+    return _BACKEND_DIR.parent
+
+
+def _run(cmd: list[str], cwd: Path | str | None = None, capture: bool = True) -> tuple[int, str]:
+    """명령 실행. (exit_code, stdout+stderr)"""
+    try:
+        r = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=capture,
+            text=True,
+            timeout=120,
+        )
+        out = (r.stdout or "") + (r.stderr or "")
+        return (r.returncode, out.strip())
+    except subprocess.TimeoutExpired:
+        return (-1, "타임아웃")
+    except FileNotFoundError:
+        return (-1, "명령을 찾을 수 없음")
+
+
+def _run_sudo(cmd: list[str]) -> tuple[int, str]:
+    """sudo 명령 실행."""
+    return _run(["sudo"] + cmd, capture=True)
+
+
+def cmd_update() -> int:
+    """GitHub에서 최신 코드 pull, 의존성 설치, 서비스 재시작, health 검사. (.env 등 설정은 건드리지 않음)"""
+    if not _is_linux():
+        print("--update는 리눅스에서만 지원됩니다.")
+        return 1
+    root = _project_root()
+    if not (root / ".git").exists():
+        print(f"오류: Git 저장소가 아닙니다. {root}")
+        return 1
+
+    print("=== baejjangi --update ===\n")
+    # 현재 버전
+    ver_file = root / "VERSION"
+    old_ver = ver_file.read_text().strip() if ver_file.exists() else "?"
+    print(f"[1/5] 현재 버전: {old_ver}")
+
+    # git pull
+    code, out = _run(["git", "pull"], cwd=root)
+    if code != 0:
+        print(f"[2/5] git pull 실패: {out}")
+        return 1
+    print(f"[2/5] git pull: {out.split(chr(10))[0] if out else 'OK'}")
+
+    # pip install
+    venv_pip = _BACKEND_DIR / "venv" / "bin" / "pip"
+    if venv_pip.exists():
+        code2, out2 = _run([str(venv_pip), "install", "-q", "-r", "requirements.txt"], cwd=_BACKEND_DIR)
+    else:
+        code2, out2 = _run(["pip3", "install", "-q", "-r", "requirements.txt"], cwd=_BACKEND_DIR)
+    if code2 != 0:
+        print(f"[3/5] pip install 경고: {out2[:200]}")
+    else:
+        print("[3/5] pip install: OK")
+
+    # 재시작
+    code3, out3 = _run_sudo(["systemctl", "restart", SYSTEMD_SERVICE])
+    if code3 != 0:
+        print(f"[4/5] 서비스 재시작 실패: {out3}")
+        return 1
+    print("[4/5] 서비스 재시작: OK")
+    import time
+    time.sleep(4)
+
+    # health
+    code4, out4 = _run(["curl", "-s", "http://127.0.0.1:8000/health"], capture=True)
+    new_ver = "?"
+    if "version" in out4:
+        try:
+            import json
+            new_ver = json.loads(out4).get("version", "?")
+        except Exception:
+            pass
+    ok = code4 == 0 and "ok" in out4.lower()
+    print(f"[5/5] health: {'정상' if ok else '실패'} (버전: {new_ver})")
+    print("\n" + "=" * 50)
+    print(f"  결과: {'업데이트 성공' if ok else '업데이트 후 확인 필요'}")
+    print(f"  이전 버전: {old_ver}  →  현재: {new_ver}")
+    print("=" * 50)
+    return 0 if ok else 1
+
+
+def cmd_reinstall() -> int:
+    """기존 설치 제거 후 클론·설정 복원·venv·서비스 기동·테스트. (환경설정 .env/DB 는 백업 후 복원)"""
+    if not _is_linux():
+        print("--reinstall은 리눅스에서만 지원됩니다.")
+        return 1
+
+    import tempfile
+    import shutil
+    root = _project_root()
+    parent = root.parent
+    backup_dir = Path(tempfile.mkdtemp(prefix="baejjangi_reinstall_"))
+    backend = root / "backend"
+
+    def _step(n: int, msg: str) -> None:
+        print(f"\n[{n}] {msg}")
+
+    print("=== baejjangi --reinstall (클린 설치) ===\n")
+
+    # 1. 백업 .env, *.db
+    _step(1, "백업 (.env, DB)")
+    if (backend / ".env").exists():
+        shutil.copy2(backend / ".env", backup_dir / ".env")
+        print("  .env 백업됨")
+    if list(backend.glob("*.db")):
+        for f in backend.glob("*.db"):
+            shutil.copy2(f, backup_dir / f.name)
+            print(f"  {f.name} 백업됨")
+
+    # 2. 서비스 중지
+    _step(2, "서비스 중지")
+    _run_sudo(["systemctl", "stop", SYSTEMD_SERVICE])
+    _run_sudo(["systemctl", "stop", "upbit-backend"])
+    print("  OK")
+
+    # 3. 클론은 새 폴더에 한 뒤, 기존 폴더와 교체 (실행 중인 디렉터리 직접 삭제 불가)
+    _step(3, "Git 클론 (최신 저장소 → baejjangi_new)")
+    clone_name = "baejjangi_new"
+    code, out = _run(["git", "clone", REPO_URL, clone_name], cwd=parent)
+    if code != 0:
+        print(f"  실패: {out}")
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return 1
+    new_root = parent / clone_name
+    new_backend = new_root / "backend"
+    if not new_backend.exists():
+        print("  오류: backend 폴더 없음")
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return 1
+    print("  OK")
+
+    # 4. 설정 복원 (baejjangi_new/backend 에 복원)
+    _step(4, "설정 복원 (.env, DB)")
+    if (backup_dir / ".env").exists():
+        shutil.copy2(backup_dir / ".env", new_backend / ".env")
+        print("  .env 복원됨")
+    else:
+        if (new_backend / ".env.example").exists():
+            shutil.copy2(new_backend / ".env.example", new_backend / ".env")
+            print("  .env 없음 → .env.example 복사 (수동 설정 필요)")
+    for f in backup_dir.glob("*.db"):
+        shutil.copy2(f, new_backend / f.name)
+        print(f"  {f.name} 복원됨")
+    shutil.rmtree(backup_dir, ignore_errors=True)
+
+    # 6. venv + pip
+    _step(6, "가상환경 및 의존성 설치")
+    code6, out6 = _run(["python3", "-m", "venv", "venv"], cwd=new_backend)
+    if code6 != 0:
+        print(f"  venv 실패: {out6}")
+        return 1
+    pip = new_backend / "venv" / "bin" / "pip"
+    code6b, out6b = _run([str(pip), "install", "-q", "-r", "requirements.txt"], cwd=new_backend)
+    if code6b != 0:
+        print(f"  pip 경고: {out6b[:150]}")
+    print("  OK")
+
+    # 7. systemd 유닛 파일명 통일 (새 경로는 아직 baejjangi_new → 8에서 교체 후 baejjangi 가 됨)
+    _step(7, "systemd baejjangi-backend.service")
+    old_unit = Path("/etc/systemd/system/upbit-backend.service")
+    new_unit = Path("/etc/systemd/system/baejjangi-backend.service")
+    if old_unit.exists():
+        _run_sudo(["mv", str(old_unit), str(new_unit)])
+    if new_unit.exists():
+        _run_sudo(["sed", "-i", "s|upbitAUTObot/backend|baejjangi/backend|g", str(new_unit)])
+    _run_sudo(["systemctl", "daemon-reload"])
+    print("  OK")
+
+    # 8. 기존 baejjangi 제거 후 새 버전으로 교체
+    _step(8, "기존 설치 제거 및 새 버전으로 교체")
+    # upbitAUTObot 은 삭제, baejjangi 는 이름만 변경(실행 중인 디렉터리이므로 삭제 불가)
+    for name in ["upbitAUTObot"]:
+        d = parent / name
+        if d.exists():
+            shutil.rmtree(d, ignore_errors=True)
+            print(f"  삭제: {d}")
+    if (parent / INSTALL_DIR_NAME).exists():
+        _run(["mv", str(parent / INSTALL_DIR_NAME), str(parent / "baejjangi_old")], cwd=parent)
+        print("  기존 baejjangi → baejjangi_old")
+    code_mv, _ = _run(["mv", str(new_root), str(parent / INSTALL_DIR_NAME)], cwd=parent)
+    if code_mv != 0:
+        print("  교체 실패")
+        return 1
+    print("  baejjangi_new → baejjangi OK")
+
+    # 9. 서비스 기동
+    _step(9, "서비스 기동")
+    code8, out8 = _run_sudo(["systemctl", "start", SYSTEMD_SERVICE])
+    if code8 != 0:
+        print(f"  실패: {out8}")
+        return 1
+    import time
+    time.sleep(5)
+    print("  OK")
+
+    # 10. 서버 테스트 (health, 인증메일 엔드포인트, 로그인 엔드포인트)
+    _step(10, "서버 테스트")
+    base = "http://127.0.0.1:8000"
+    health_code, health_out = _run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", f"{base}/health"])
+    health_ok = health_code == 0 and health_out.strip() == "200"
+    mail_code, mail_out = _run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "-X", "POST", f"{base}/api/v1/auth/send-verification-email", "-H", "Content-Type: application/json", "-d", '{"email":"test@example.com"}'])
+    mail_ok = mail_code == 0 and mail_out.strip() in ("200", "400", "503")
+    login_code, login_out = _run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "-X", "POST", f"{base}/api/v1/auth/login", "-H", "Content-Type: application/json", "-d", '{"email":"x@x.com","password":"x"}'])
+    login_ok = login_code == 0 and login_out.strip() == "401"
+
+    print("\n" + "=" * 50)
+    print("  재설치 결과")
+    print("=" * 50)
+    print(f"  health (/)           : {'정상' if health_ok else '실패'}")
+    print(f"  인증메일 API         : {'응답 있음' if mail_ok else '실패'}")
+    print(f"  로그인 API (401)     : {'정상' if login_ok else '실패'}")
+    print("=" * 50)
+    ver = "?"
+    if health_ok:
+        _, body = _run(["curl", "-s", f"{base}/health"])
+        try:
+            import json
+            ver = json.loads(body).get("version", "?")
+        except Exception:
+            pass
+    print(f"  백엔드 버전: {ver}")
+    print("=" * 50 + "\n")
+    return 0 if health_ok else 1
 
 
 def cmd_systemd_stop() -> int:
@@ -387,6 +622,8 @@ def main() -> int:
   baejjangi --restart          (리눅스) systemd baejjangi-backend 재시작
   baejjangi --status           (리눅스) systemd baejjangi-backend 상태
   baejjangi --user             앱 사용자 목록 + 최근 접속일
+  baejjangi --update           (리눅스) GitHub 최신 버전 pull·재시작·health 검사 (.env 유지)
+  baejjangi --reinstall        (리눅스) 클린 재설치·설정 복원·서비스 기동·서버 테스트
   baejjangi --env-file /path/to/.env test mail
         """,
     )
@@ -420,6 +657,16 @@ def main() -> int:
         "--user",
         action="store_true",
         help="앱 사용자 목록 + 최근 접속일 출력 (.env의 DB 사용)",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="(리눅스) GitHub에서 최신 코드 pull, pip 설치, 서비스 재시작, health 검사 (환경설정 .env 미변경)",
+    )
+    parser.add_argument(
+        "--reinstall",
+        action="store_true",
+        help="(리눅스) 클린 재설치: 기존 제거 후 클론·설정 복원·venv·서비스 기동·서버 테스트",
     )
     sub = parser.add_subparsers(dest="command", title="서브커맨드")
 
@@ -474,6 +721,10 @@ def main() -> int:
         return cmd_systemd_status()
     if getattr(args, "user", False):
         return cmd_user(args.env_file)
+    if getattr(args, "update", False):
+        return cmd_update()
+    if getattr(args, "reinstall", False):
+        return cmd_reinstall()
 
     if args.command is None:
         parser.print_help()
