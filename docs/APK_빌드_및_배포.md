@@ -4,7 +4,11 @@
 
 Android 정식 배포용 APK를 빌드하고 GitHub Release에 올리는 방법입니다.
 
-**APK 파일명 규칙**: 빌드 결과물은 **`baejjangi-X-Y-Z.apk`** 형식으로 둡니다 (예: baejjangi-1-4-3.apk). `build_apk.bat` / `build_apk_로컬.bat` 실행 시 자동으로 버전별 파일명이 생성되며, 수동 빌드 후에는 `upbit_trading_app/scripts/rename_apk_to_versioned.ps1` 를 실행하면 됩니다.
+**APK 파일명 규칙**: 빌드 결과물은 반드시 **`baejjangi-버전.apk`** 형식으로 둡니다 (예: baejjangi-1-4-6.apk). GitHub Actions·로컬 빌드 모두 이 규칙을 유지합니다. `build_apk.bat` / `build_apk_로컬.bat` 실행 시 자동으로 버전별 파일명이 생성되며, 수동 빌드 후에는 `upbit_trading_app/scripts/rename_apk_to_versioned.ps1` 를 실행하면 됩니다.
+
+**앱 버전 vs 엔진 버전**: 앱 버전(pubspec.yaml 등)과 개미엔진(AntEngine) 버전(ant_engine/CMakeLists.txt)은 **별도 관리**합니다.  
+- **앱**: 빌드할 때마다 **0.0.1**씩 올림 (예: 1.4.6 → 1.4.7).  
+- **엔진**: 빌드할 때마다 **0.1**씩 올림 (예: 0.9 → 1.0).
 
 **※ 정식 상용 배포용 앱**이므로, 테스트는 **크롬/웹이 아닌 APK 빌드 후 실기기 또는 에뮬레이터**로 진행해야 합니다.
 

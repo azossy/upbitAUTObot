@@ -1,0 +1,13 @@
+/build/
+/out/
+*.exe
+*.o
+*.obj
+*.user
+.vs/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.vcxproj*
+*.sln

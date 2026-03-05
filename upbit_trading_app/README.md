@@ -1,6 +1,6 @@
 # 배짱이 v1.1
 
-**저작자**: 차리 (challychoi@me.com)
+**저작자**: 차리 (challychoi@me.com) 
 
 Flutter 기반 Android 앱 (업비트 연동 자동매매).
 

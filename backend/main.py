@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="배짱이 v1.4 API",
-    version="1.4.6",
+    version="1.4.7",
     lifespan=lifespan,
 )
 
@@ -93,7 +93,7 @@ _STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
-APP_VERSION = "1.4.6"
+APP_VERSION = "1.4.7"
 
 
 @app.get("/health")

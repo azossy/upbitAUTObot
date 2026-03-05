@@ -1,8 +1,8 @@
 # 배짱이 Android APK 빌드 — 정식 배포용
 # Release 생성 시 자동으로 APK 빌드 후 해당 Release에 업로드합니다.
 #
-# ★ 출력 APK 파일명: baejjangi-버전.apk (예: baejjangi-1-4-5.apk)
-#    pubspec.yaml의 version(1.4.5+9 → 1-4-5)으로 생성. 다음 빌드 시에도 동일 적용.
+# ★ 출력 APK 파일명: baejjangi-버전.apk (예: baejjangi-1.4.6.apk)
+#    pubspec.yaml의 version(1.4.6+10 → 1.4.6)으로 생성. 앱 버전만 사용(엔진 AntEngine 버전과 별도 관리).
 
 name: Build Release APK
 
@@ -62,8 +62,7 @@ jobs:
           if [ ! -f "$PUBSPEC" ]; then echo "::error::Not found: $PUBSPEC"; exit 1; fi
           VERSION=$(grep '^version:' "$PUBSPEC" | sed 's/version: *//' | sed 's/+.*//' | tr -d ' ')
           if [ -z "$VERSION" ]; then echo "::error::Could not parse version from $PUBSPEC"; exit 1; fi
-          SLUG=$(echo "$VERSION" | tr '.' '-')
-          APK_NAME="baejjangi-${SLUG}.apk"
+          APK_NAME="baejjangi-${VERSION}.apk"
           echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           SRC="upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk"
