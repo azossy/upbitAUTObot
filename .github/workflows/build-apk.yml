@@ -50,17 +50,27 @@ jobs:
         working-directory: upbit_trading_app
         run: flutter build apk --release
 
-      - name: Upload APK to Release
+      - name: Parse version and rename APK to baejjangi-버전.apk
+        id: apk_name
+        run: |
+          VERSION=$(grep '^version:' upbit_trading_app/pubspec.yaml | sed 's/version: *//' | sed 's/+.*//')
+          SLUG=$(echo "$VERSION" | tr '.' '-')
+          APK_NAME="baejjangi-${SLUG}.apk"
+          echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          cp upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk "./${APK_NAME}"
+          echo "Created ${APK_NAME}"
+
+      - name: Upload APK to Release (baejjangi-버전.apk)
         if: github.event.release.tag_name != ''
         run: |
-          cp upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
-          gh release upload "${{ github.event.release.tag_name }}" app-release.apk --clobber
+          gh release upload "${{ github.event.release.tag_name }}" "${{ steps.apk_name.outputs.apk_name }}" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload APK artifact (수동 실행 시)
+      - name: Upload APK artifact (수동 실행 시, baejjangi-버전.apk)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ steps.apk_name.outputs.apk_name }}
+          path: ${{ steps.apk_name.outputs.apk_name }}
