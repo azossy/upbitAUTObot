@@ -277,8 +277,9 @@ class ApiService {
     await _dio.post('/api/v1/bot/start');
   }
 
-  Future<void> stopBot() async {
-    await _dio.post('/api/v1/bot/stop');
+  /// 봇 정지. afterSell true면 매각 후 정지(백엔드에서 지원 시), false면 즉시 정지.
+  Future<void> stopBot({bool afterSell = false}) async {
+    await _dio.post('/api/v1/bot/stop', data: {'stop_mode': afterSell ? 'after_sell' : 'immediate'});
   }
 
   Future<List<dynamic>> getPositions() async {

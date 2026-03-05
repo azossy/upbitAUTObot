@@ -9,4 +9,14 @@ class OAuthConfig {
 
   /// 카카오 네이티브 앱 키 (Kakao Developers > 앱 > 앱 키)
   static const String kakaoNativeAppKey = 'YOUR_KAKAO_NATIVE_APP_KEY';
+
+  /// 구글 로그인 사용 가능 여부 (실제 Web Client ID가 설정된 경우만 true)
+  static bool get isGoogleConfigured =>
+      googleWebClientId.isNotEmpty &&
+      !googleWebClientId.startsWith('YOUR_') &&
+      googleWebClientId.contains('googleusercontent.com');
+
+  /// 카카오 로그인 사용 가능 여부 (실제 네이티브 앱 키가 설정된 경우만 true)
+  static bool get isKakaoConfigured =>
+      kakaoNativeAppKey.isNotEmpty && !kakaoNativeAppKey.startsWith('YOUR_');
 }

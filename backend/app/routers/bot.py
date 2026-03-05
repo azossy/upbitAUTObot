@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 import csv
@@ -20,6 +20,7 @@ from app.models.trade import Trade
 from app.schemas.auth import (
     BotStatusResponse,
     BotConfigRequest,
+    StopBotRequest,
     ApiKeyCreateRequest,
     ApiKeyResponse,
     MessageResponse,
@@ -99,10 +100,11 @@ async def start_bot(
 
 @router.post("/stop", response_model=MessageResponse)
 async def stop_bot(
-    request: Request,
+    req: StopBotRequest | None = Body(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # stop_mode: immediate(즉시) | after_sell(매각 후). 현재는 모두 즉시 정지. 차후 after_sell 로직 추가 가능.
     bot = await get_or_create_bot(user, db)
     bot.status = BotStatus.STOPPED
     await db.commit()

@@ -97,6 +97,11 @@ class FcmTokenRequest(BaseModel):
     fcm_token: Optional[str] = Field(None, max_length=512, description="FCM 토큰 (빈 문자열이면 등록 해제)")
 
 
+class StopBotRequest(BaseModel):
+    """봇 정지 옵션. stop_mode: immediate(즉시) | after_sell(매각 후). 미전달 시 즉시 정지."""
+    stop_mode: Optional[str] = Field(None, description="immediate | after_sell")
+
+
 class BotConfigRequest(BaseModel):
     max_investment_ratio: Optional[float] = Field(None, ge=0, le=1, description="0~1")
     max_positions: Optional[int] = Field(None, ge=1, le=20, description="1~20")

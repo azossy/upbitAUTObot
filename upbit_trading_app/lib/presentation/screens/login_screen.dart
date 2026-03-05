@@ -74,17 +74,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _onGoogleLogin() async {
+    // 유명 앱 방식: 소셜 로그인 미설정 시 OAuth UI를 띄우지 않고 안내만 표시
+    if (!OAuthConfig.isGoogleConfigured) {
+      setState(() {
+        _error = '이 기기에서는 구글 로그인이 설정되지 않았습니다. 이메일 로그인 또는 회원가입을 이용해 주세요.';
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      // 공식 권장: 서버 Web Client ID를 serverClientId로 지정해야 id_token 발급됨 (백엔드 검증용)
-      final googleSignIn = GoogleSignIn(
-        serverClientId: OAuthConfig.googleWebClientId.isEmpty || OAuthConfig.googleWebClientId.startsWith('YOUR_')
-            ? null
-            : OAuthConfig.googleWebClientId,
-      );
+      final googleSignIn = GoogleSignIn(serverClientId: OAuthConfig.googleWebClientId);
       final account = await googleSignIn.signIn();
       if (account == null) {
         if (mounted) setState(() => _loading = false);
@@ -109,6 +111,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       if (result.needRegister) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('가입된 계정이 없습니다. 아래에서 닉네임을 입력해 가입을 완료해 주세요.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         final nav = Navigator.of(context, rootNavigator: true);
         await nav.push<bool>(
           MaterialPageRoute<bool>(
@@ -118,18 +128,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted && ref.read(authStateProvider).isLoggedIn) context.go('/');
         return;
       }
-      setState(() => _error = result.errorMessage);
+      setState(() => _error = result.errorMessage ?? '구글 로그인에 실패했습니다.');
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString().contains('sign_in_canceled') ? null : '구글 로그인에 실패했습니다.';
+          _error = e.toString().contains('sign_in_canceled') ? null : '구글 로그인에 실패했습니다. 네트워크와 설정을 확인해 주세요.';
         });
       }
     }
   }
 
   Future<void> _onKakaoLogin() async {
+    // 유명 앱 방식: 소셜 로그인 미설정 시 OAuth UI를 띄우지 않고 안내만 표시
+    if (!OAuthConfig.isKakaoConfigured) {
+      setState(() {
+        _error = '이 기기에서는 카카오 로그인이 설정되지 않았습니다. 이메일 로그인 또는 회원가입을 이용해 주세요.';
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -144,6 +161,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       if (result.needRegister) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('가입된 계정이 없습니다. 아래에서 닉네임을 입력해 가입을 완료해 주세요.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
         final nav = Navigator.of(context, rootNavigator: true);
         await nav.push<bool>(
           MaterialPageRoute<bool>(
@@ -153,12 +178,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted && ref.read(authStateProvider).isLoggedIn) context.go('/');
         return;
       }
-      setState(() => _error = result.errorMessage);
+      setState(() => _error = result.errorMessage ?? '카카오 로그인에 실패했습니다.');
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString().contains('UserCancel') ? null : '카카오 로그인에 실패했습니다.';
+          final msg = e.toString();
+          _error = (msg.contains('UserCancel') || msg.contains('Cancelled')) ? null : '카카오 로그인에 실패했습니다. 네트워크와 설정을 확인해 주세요.';
         });
       }
     }

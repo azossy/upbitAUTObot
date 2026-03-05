@@ -22,13 +22,14 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
+const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL'];
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Map<String, dynamic>? _status;
   List<dynamic> _positions = [];
   List<Map<String, dynamic>> _pnlHistory = [];
   Map<String, dynamic>? _balance; // { krw, assets, error? }
+  Map<String, dynamic>? _profile; // 프로필(avatar_url, nickname)
   List<Map<String, dynamic>> _tickerData = [];
   bool _loading = true;
   String? _error;
@@ -49,11 +50,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
+  List<String> get _tickerMarkets {
+    final markets = Set<String>.from(_defaultTickerMarkets);
+    for (final p in _positions) {
+      final coin = (p['coin'] as String? ?? '').toUpperCase();
+      if (coin.isNotEmpty) markets.add('KRW-$coin');
+    }
+    return markets.toList();
+  }
+
   Future<void> _fetchTicker() async {
     if (!mounted) return;
     try {
       final api = ref.read(apiServiceProvider);
-      final list = await api.getTicker(_defaultTickerMarkets);
+      final list = await api.getTicker(_tickerMarkets);
       if (mounted) setState(() => _tickerData = list);
     } catch (_) {
       if (mounted) setState(() => _tickerData = []);
@@ -71,18 +81,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         api.getBotStatus(),
         api.getPositions(),
         api.getPnlHistory(days: 30).catchError((_) => <Map<String, dynamic>>[]),
-        api.getBalance().catchError((_) => null),
+        api.getBalance().catchError((_) => <String, dynamic>{}),
+        api.getProfile().catchError((_) => <String, dynamic>{}),
       ]);
       final status = results[0] as Map<String, dynamic>;
       final positions = results[1] as List<dynamic>;
       final pnlHistory = results[2] as List<Map<String, dynamic>>;
       final balance = results[3] as Map<String, dynamic>?;
+      final profileRaw = results[4];
+      final profile = (profileRaw is Map && profileRaw.isNotEmpty) ? profileRaw as Map<String, dynamic> : null;
       if (mounted) {
         setState(() {
           _status = status;
           _positions = positions;
           _pnlHistory = pnlHistory;
           _balance = balance;
+          _profile = profile;
           _botRunning = status['status'] == 'running';
           _loading = false;
         });
@@ -97,6 +111,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
   }
+
+  /// 포지션 코인별 현재 원화가치 합산 (봇운영보유고). ticker 시세 기준.
+  double get _botAssetsKrw {
+    double sum = 0.0;
+    for (final p in _positions) {
+      final coin = (p['coin'] as String? ?? '').toUpperCase();
+      final qty = (p['quantity'] as num?)?.toDouble() ?? 0.0;
+      if (coin.isEmpty || qty <= 0) continue;
+      final market = 'KRW-$coin';
+      num? price;
+      for (final e in _tickerData) {
+        if ((e['market'] as String?) == market) {
+          price = (e['trade_price'] as num?)?.toDouble();
+          break;
+        }
+      }
+      sum += qty * (price ?? 0).toDouble();
+    }
+    return sum;
+  }
+
+  double get _cashKrw {
+    if (_balance == null || _balance!['error'] != null) return 0.0;
+    return ((_balance!['krw'] as num?) ?? 0).toDouble();
+  }
+
+  double get _totalAssetsKrw => _cashKrw + _botAssetsKrw;
 
   String _balanceMessage(String error) {
     if (error.contains('등록') || error.contains('API 키를')) {
@@ -136,25 +177,88 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _toggleBot() async {
     try {
       final api = ref.read(apiServiceProvider);
-      if (_botRunning) {
-        await api.stopBot();
-      } else {
-        await api.startBot();
-      }
+      await api.startBot();
       if (mounted) {
-        setState(() => _botRunning = !_botRunning);
+        setState(() => _botRunning = true);
         _fetch();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(getApiErrorMessage(e, fallback: '봇 제어에 실패했습니다.')),
+            content: Text(getApiErrorMessage(e, fallback: '봇 시작에 실패했습니다.')),
             duration: const Duration(seconds: 4),
           ),
         );
       }
     }
+  }
+
+  Future<void> _stopBot({bool afterSell = false}) async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.stopBot(afterSell: afterSell);
+      if (mounted) {
+        setState(() => _botRunning = false);
+        _fetch();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(getApiErrorMessage(e, fallback: '봇 정지에 실패했습니다.')),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildProfileLeading(BuildContext context) {
+    final theme = Theme.of(context);
+    final api = ref.read(apiServiceProvider);
+    final avatarUrl = _profile?['avatar_url']?.toString().trim();
+    final fullUrl = avatarUrl != null && avatarUrl.isNotEmpty ? api.avatarFullUrl(avatarUrl) : '';
+    final nickname = (_profile?['nickname'] ?? ref.read(authStateProvider).user?['nickname'] ?? '') as String;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (fullUrl.isNotEmpty)
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              backgroundImage: NetworkImage(fullUrl),
+              onBackgroundImageError: (_, __) {},
+            )
+          else
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Text(
+                nickname.isNotEmpty ? nickname.substring(0, 1).toUpperCase() : '?',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              nickname.isNotEmpty ? nickname : '사용자',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                overflow: TextOverflow.ellipsis,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -169,6 +273,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final l10n = ref.watch(appLocalizationsProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Center(child: _buildProfileLeading(context)),
+        ),
+        leadingWidth: 180,
         title: Text(l10n.navDashboard),
         actions: [
           IconButton(
@@ -233,35 +342,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(height: 16),
               ],
               if (_balance != null) ...[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.account_balance_wallet_outlined, color: Theme.of(context).colorScheme.primary, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
+                // 총보유자산 (상단)
+                Text(
+                  '총보유자산',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      '${formatKrw(_totalAssetsKrw.toInt())}원',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    if (_botRunning && _status != null) ...[
+                      const SizedBox(width: 12),
+                      _buildTotalReturnChip(context),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // 현금보유고(원화잔고) | 봇운영보유고 (2분할)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Text('원화 잔고', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
-                                  if (_botRunning && _status != null) ...[
-                                    const SizedBox(width: 12),
-                                    _buildTotalReturnChip(context),
-                                  ],
-                                ],
+                              Text(
+                                '현금보유고(원화잔고)',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
                               Text(
                                 _balance!['error'] != null
-                                    ? '0'
-                                    : '${formatKrw((_balance!['krw'] as num?) ?? 0)}원',
+                                    ? '0원'
+                                    : '${formatKrw(_cashKrw.toInt())}원',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,
-                                  letterSpacing: 0.2,
                                 ),
                               ),
                               if (_balance!['error'] != null && (_balance!['error'] as String).isNotEmpty)
@@ -269,15 +398,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Text(
                                     _balanceMessage(_balance!['error'] as String),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.error,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '봇운영보유고',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${formatKrw(_botAssetsKrw.toInt())}원',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
               ],
@@ -308,9 +469,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    symbol,
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                                  Row(
+                                    children: [
+                                      _CoinLogo(symbol: symbol),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        symbol,
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
                                   ),
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -377,14 +544,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _toggleBot,
-                          icon: Icon(_botRunning ? Icons.stop_rounded : Icons.play_arrow_rounded, size: 20),
-                          label: Text(_botRunning ? '정지' : '시작'),
+                      if (_botRunning)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.tonalIcon(
+                                onPressed: () => _stopBot(afterSell: true),
+                                icon: const Icon(Icons.sell_outlined, size: 18),
+                                label: const Text('매각후 봇정지'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: () => _stopBot(afterSell: false),
+                                icon: const Icon(Icons.stop_rounded, size: 18),
+                                label: const Text('현상태 봇정지'),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _toggleBot,
+                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                            label: const Text('시작'),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -457,6 +645,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           NavigationDestination(icon: const Icon(Icons.newspaper), label: ref.watch(appLocalizationsProvider).navNews),
           NavigationDestination(icon: const Icon(Icons.person), label: ref.watch(appLocalizationsProvider).navMy),
         ],
+      ),
+    );
+  }
+}
+
+/// 주요 시세용 코인 로고 (UI/UX 스타일: 원형 + 심볼)
+class _CoinLogo extends StatelessWidget {
+  final String symbol;
+
+  const _CoinLogo({required this.symbol});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = symbol.length >= 2 ? symbol.substring(0, 2) : symbol;
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      child: Text(
+        label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+        ),
       ),
     );
   }
