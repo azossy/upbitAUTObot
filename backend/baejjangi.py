@@ -30,7 +30,7 @@ if str(_BACKEND_DIR) not in sys.path:
 # 기본 .env 경로: 실행 파일/스크립트와 같은 디렉터리
 DEFAULT_ENV = _BACKEND_DIR / ".env"
 
-BAEJJANGI_VERSION = "1.4.4"
+BAEJJANGI_VERSION = "1.4.5"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -122,7 +122,18 @@ def _send_test_email_from_env(env_path: Path, to: str) -> tuple[bool, str | None
     port = int(data.get("SMTP_PORT", "587") or "587")
     from_addr = (data.get("EMAIL_FROM") or "배짱이 <noreply@example.com>").strip()
     subject = "[배짱이] 메일 설정 테스트"
-    body = "배짱이 CLI(baejjangi test mail)에서 발송한 테스트 메일입니다. 설정이 정상입니다."
+    contact = (data.get("APP_CONTACT_EMAIL") or "baejjangi@example.com").strip() or "baejjangi@example.com"
+    try:
+        from app.services.email_footer_constants import get_footer_plain
+        footer = get_footer_plain(contact)
+    except ImportError:
+        footer = (
+            "\n\n---\n"
+            "배짱이 앱은 엄청난 연구와 실제 테스트를 거쳐 안정성 있게 만들어진, "
+            "최고의 엔진이 탑재된 좋은 앱입니다.\n"
+            "궁금한 점이 있으면 이메일을 보내 주세요: " + contact
+        )
+    body = "배짱이 CLI(baejjangi test mail)에서 발송한 테스트 메일입니다. 설정이 정상입니다." + footer
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject

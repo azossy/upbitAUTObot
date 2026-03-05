@@ -4,10 +4,11 @@
 
 ---
 
-## 1. 보관 위치 (저장소 제외)
+## 1. 보관 위치
 
-- 암호화된 파일은 **`secrets/`** 폴더 또는 팀만 접근 가능한 **비공개 저장소/클라우드**에 둔다.
-- `.gitignore`에 `secrets/`, `*.jetson.enc`, `*jetson*access*.txt`가 포함되어 있어 **실수로 커밋되지 않는다.**
+- **저장소에 올리는 경우**: 암호화된 파일을 **`config/jetson_creds.enc`**에 둔다. 복호화 패스프레이즈는 저장소에 넣지 않고, 사용할 때 프로젝트 소유자에게 문의한다.
+- **저장소 제외**: `secrets/` 폴더 또는 팀만 접근 가능한 비공개 저장소에 둘 수도 있다.
+- `.gitignore`에 `secrets/`, `*.jetson.enc`, `*jetson*access*.txt`가 포함되어 있어 `secrets/` 내 평문·jetson.enc 형식 파일은 실수로 커밋되지 않는다. `config/jetson_creds.enc`는 커밋 가능(암호화만 되어 있음).
 
 ---
 

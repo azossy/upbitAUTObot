@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format.dart';
 import '../../providers/locale_provider.dart';
 import '../widgets/pnl_chart.dart';
 import '../widgets/pnl_history_chart.dart';
@@ -22,17 +23,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 const List<String> _defaultTickerMarkets = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP'];
-
-/// 한국식 천 단위 콤마 (예: 999,999,999)
-String _formatKrw(num value) {
-  final s = value.toInt().abs().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-    buf.write(s[i]);
-  }
-  return buf.toString();
-}
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Map<String, dynamic>? _status;
@@ -77,19 +67,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
     try {
       final api = ref.read(apiServiceProvider);
-      final status = await api.getBotStatus();
-      final positions = await api.getPositions();
-      List<Map<String, dynamic>> pnlHistory = [];
-      try {
-        pnlHistory = await api.getPnlHistory(days: 30);
-      } catch (_) {}
-      Map<String, dynamic>? balance;
-      try {
-        balance = await api.getBalance();
-      } catch (_) {}
-      try {
-        _fetchTicker();
-      } catch (_) {}
+      final results = await Future.wait([
+        api.getBotStatus(),
+        api.getPositions(),
+        api.getPnlHistory(days: 30).catchError((_) => <Map<String, dynamic>>[]),
+        api.getBalance().catchError((_) => null),
+      ]);
+      final status = results[0] as Map<String, dynamic>;
+      final positions = results[1] as List<dynamic>;
+      final pnlHistory = results[2] as List<Map<String, dynamic>>;
+      final balance = results[3] as Map<String, dynamic>?;
       if (mounted) {
         setState(() {
           _status = status;
@@ -100,6 +87,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _loading = false;
         });
       }
+      _fetchTicker();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -269,7 +257,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               Text(
                                 _balance!['error'] != null
                                     ? '0'
-                                    : '${_formatKrw((_balance!['krw'] as num?) ?? 0)}원',
+                                    : '${formatKrw((_balance!['krw'] as num?) ?? 0)}원',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.primary,
@@ -328,7 +316,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '${_formatKrw(price)}원',
+                                        '${formatKrw(price)}원',
                                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                                       ),
                                       Text(

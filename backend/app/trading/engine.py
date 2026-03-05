@@ -15,18 +15,22 @@ from app.models.user import User
 from app.utils.encryption import decrypt_api_key
 from app.trading.upbit_client import UpbitClient
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 
 async def trading_loop(app, user_id: int):
     """
     봇이 RUNNING인 동안 주기적으로 업비트 API(잔고 조회)를 호출하는 검증용 루프.
     봇 정지 시 외부에서 task.cancel() 호출되면 종료됩니다.
+    Bot 조회 시 User를 joinedload로 함께 로드해 알림 시 별도 User 쿼리 제거.
     """
     sent_start_alert = False
     try:
         while True:
             async with AsyncSessionLocal() as session:
-                result = await session.execute(select(Bot).where(Bot.user_id == user_id))
+                result = await session.execute(
+                    select(Bot).where(Bot.user_id == user_id).options(joinedload(Bot.user))
+                )
                 bot = result.scalar_one_or_none()
                 if not bot or bot.status != BotStatus.RUNNING:
                     logger.info(f"[트레이딩] user_id={user_id} 봇이 RUNNING이 아님 — 루프 종료")
@@ -49,24 +53,20 @@ async def trading_loop(app, user_id: int):
                     await asyncio.sleep(60)
                     continue
 
+                user = bot.user
                 client = UpbitClient(access_key, secret_key)
                 try:
                     accounts = await client.get_accounts()
                     krw = await client.get_krw_balance()
                     logger.info(f"[트레이딩] user_id={user_id} 업비트 API 연동 확인 — 잔고 조회 성공, KRW={krw:,.0f}")
-                    if not sent_start_alert:
+                    if not sent_start_alert and user and (user.telegram_chat_id or user.fcm_token):
                         sent_start_alert = True
-                        user_result = await session.execute(select(User).where(User.id == user_id))
-                        user = user_result.scalar_one_or_none()
-                        if user and (user.telegram_chat_id or user.fcm_token):
-                            from app.services.notification import send_bot_start_alert
-                            await send_bot_start_alert(user.telegram_chat_id, user.fcm_token, krw)
+                        from app.services.notification import send_bot_start_alert
+                        await send_bot_start_alert(user.telegram_chat_id, user.fcm_token, krw)
                 except Exception as e:
                     logger.warning(f"[트레이딩] user_id={user_id} 업비트 API 호출 실패: {e}")
                     bot.status = BotStatus.STOPPED
                     await session.commit()
-                    user_result = await session.execute(select(User).where(User.id == user_id))
-                    user = user_result.scalar_one_or_none()
                     if user and (user.telegram_chat_id or user.fcm_token):
                         from app.services.notification import send_emergency_stop_alert
                         await send_emergency_stop_alert(user.telegram_chat_id, user.fcm_token, str(e))

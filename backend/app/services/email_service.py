@@ -4,16 +4,35 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.config import settings
+from app.services.email_footer_constants import APP_INTRO, get_footer_plain
 
 
 def is_smtp_configured() -> bool:
     return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD)
 
 
+def _get_email_footer() -> tuple[str, str]:
+    """발송 메일 하단에 붙일 앱 소개·문의 안내. (plain, html). 문구는 email_footer_constants 사용."""
+    contact = (settings.APP_CONTACT_EMAIL or "").strip() or "baejjangi@example.com"
+    plain = get_footer_plain(contact)
+    html = (
+        '<p style="margin-top:1.5em;color:#666;font-size:0.9em;">'
+        "배짱이 앱은 엄청난 연구와 실제 테스트를 거쳐 안정성 있게 만들어진, "
+        "최고의 엔진이 탑재된 좋은 앱입니다.<br>"
+        "궁금한 점이 있으면 이메일을 보내 주세요: "
+        f'<a href="mailto:{contact}">{contact}</a></p>'
+    )
+    return plain, html
+
+
 def send_email(to: str, subject: str, body_text: str, body_html: str | None = None) -> bool:
-    """이메일 발송. SMTP 미설정이면 False."""
+    """이메일 발송. SMTP 미설정이면 False. 본문 뒤에 앱 소개·문의 푸터를 자동으로 붙입니다."""
     if not is_smtp_configured():
         return False
+    footer_plain, footer_html = _get_email_footer()
+    body_text = body_text.rstrip() + footer_plain
+    if body_html:
+        body_html = body_html.rstrip() + footer_html
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject

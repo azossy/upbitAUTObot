@@ -5,6 +5,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -21,6 +22,7 @@ from app.routers import auth, bot, market, news
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.trading_tasks = {}  # user_id -> asyncio.Task (봇 시작 시 트레이딩 루프)
+    app.state.http_client = httpx.AsyncClient(timeout=10.0)
     await init_db()
     yield
     # 봇 정지: 모든 트레이딩 태스크 취소
@@ -31,11 +33,12 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
     app.state.trading_tasks.clear()
+    await app.state.http_client.aclose()
 
 
 app = FastAPI(
     title="배짱이 v1.4 API",
-    version="1.4.4",
+    version="1.4.5",
     lifespan=lifespan,
 )
 
@@ -90,7 +93,7 @@ _STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
-APP_VERSION = "1.4.4"
+APP_VERSION = "1.4.5"
 
 
 @app.get("/health")

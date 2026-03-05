@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "배짱이 <noreply@example.com>"
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 1
+    # 문의용 기본 메일 (발송 메일 하단 안내)
+    APP_CONTACT_EMAIL: str = "baejjangi@example.com"
 
     # 서버
     DEBUG: bool = False

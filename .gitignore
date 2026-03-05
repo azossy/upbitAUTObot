@@ -9,6 +9,8 @@ upbit-trading-system/.env
 secrets/
 *.jetson.enc
 *jetson*access*.txt
+config/*jetson*plain*
+config/jetson_creds_plain.txt
 
 # Python
 __pycache__/
@@ -62,3 +64,7 @@ upbit-trading-system/
 
 # 에이전트 공용 화이트보드 (로컬 전용, GitHub 미배포)
 123.txt
+
+# 로컬 보관용 (참조가치 적거나 판단 보류 문서, GitHub 미배포)
+*.old
+**/*.old
