@@ -4,6 +4,25 @@ import 'api_service.dart';
 import 'biometric_service.dart';
 import 'notification_service.dart';
 
+/// 구글/카카오 로그인 결과. 성공(로그인됨) / 미가입(회원가입 화면으로) / 실패(에러 메시지)
+class OAuthLoginResult {
+  final bool success;
+  final bool needRegister;
+  final String? errorMessage;
+  final String? email;
+  final String? name;
+  final String? idToken;
+  final String? accessToken;
+  final String? provider; // 'google' | 'kakao'
+
+  OAuthLoginResult._({this.success = false, this.needRegister = false, this.errorMessage, this.email, this.name, this.idToken, this.accessToken, this.provider});
+
+  factory OAuthLoginResult.success() => OAuthLoginResult._(success: true);
+  factory OAuthLoginResult.needRegister({required String email, required String name, String? idToken, String? accessToken, required String provider}) =>
+      OAuthLoginResult._(needRegister: true, email: email, name: name, idToken: idToken, accessToken: accessToken, provider: provider);
+  factory OAuthLoginResult.failure(String message) => OAuthLoginResult._(errorMessage: message);
+}
+
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 final biometricServiceProvider = Provider<BiometricService>((ref) => BiometricService());
 final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService(ref.watch(apiServiceProvider)));
@@ -77,28 +96,74 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// 구글 로그인. 성공 시 null, 실패 시 에러 메시지.
-  Future<String?> loginGoogle(String idToken) async {
+  /// 구글 로그인. 성공(로그인됨) / needRegister(회원가입 화면으로) / failure(에러 메시지).
+  Future<OAuthLoginResult> loginGoogle(String idToken) async {
     try {
       final data = await _api.loginGoogle(idToken);
+      if (data['need_register'] == true) {
+        return OAuthLoginResult.needRegister(
+          email: data['email']?.toString() ?? '',
+          name: data['name']?.toString() ?? '',
+          idToken: idToken,
+          provider: 'google',
+        );
+      }
       final token = data['access_token'] as String?;
       final user = data['user'] as Map<String, dynamic>?;
       if (token != null && user != null) {
         _onLoginSuccess(token, user);
-        return null;
+        return OAuthLoginResult.success();
       }
-      return '서버 응답 형식 오류';
+      return OAuthLoginResult.failure('서버 응답 형식 오류');
     } on DioException catch (e) {
-      return getApiErrorMessage(e, fallback: '구글 로그인에 실패했습니다.');
+      return OAuthLoginResult.failure(getApiErrorMessage(e, fallback: '구글 로그인에 실패했습니다.'));
     } catch (e) {
-      return getApiErrorMessage(e, fallback: '구글 로그인에 실패했습니다.');
+      return OAuthLoginResult.failure(getApiErrorMessage(e, fallback: '구글 로그인에 실패했습니다.'));
     }
   }
 
-  /// 카카오 로그인. 성공 시 null, 실패 시 에러 메시지.
-  Future<String?> loginKakao(String accessToken) async {
+  /// 카카오 로그인. 성공(로그인됨) / needRegister(회원가입 화면으로) / failure(에러 메시지).
+  Future<OAuthLoginResult> loginKakao(String accessToken) async {
     try {
       final data = await _api.loginKakao(accessToken);
+      if (data['need_register'] == true) {
+        return OAuthLoginResult.needRegister(
+          email: data['email']?.toString() ?? '',
+          name: data['name']?.toString() ?? '',
+          accessToken: accessToken,
+          provider: 'kakao',
+        );
+      }
+      final token = data['access_token'] as String?;
+      final user = data['user'] as Map<String, dynamic>?;
+      if (token != null && user != null) {
+        _onLoginSuccess(token, user);
+        return OAuthLoginResult.success();
+      }
+      return OAuthLoginResult.failure('서버 응답 형식 오류');
+    } on DioException catch (e) {
+      return OAuthLoginResult.failure(getApiErrorMessage(e, fallback: '카카오 로그인에 실패했습니다.'));
+    } catch (e) {
+      return OAuthLoginResult.failure(getApiErrorMessage(e, fallback: '카카오 로그인에 실패했습니다.'));
+    }
+  }
+
+  /// OAuth 회원가입 완료 (닉네임 입력 후). 성공 시 로그인 처리 후 null, 실패 시 에러 메시지.
+  Future<String?> completeOAuthRegister({
+    required String provider,
+    String? idToken,
+    String? accessToken,
+    required String nickname,
+  }) async {
+    try {
+      Map<String, dynamic> data;
+      if (provider == 'google' && idToken != null) {
+        data = await _api.completeGoogleRegister(idToken, nickname);
+      } else if (provider == 'kakao' && accessToken != null) {
+        data = await _api.completeKakaoRegister(accessToken, nickname);
+      } else {
+        return '잘못된 요청입니다.';
+      }
       final token = data['access_token'] as String?;
       final user = data['user'] as Map<String, dynamic>?;
       if (token != null && user != null) {
@@ -107,9 +172,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return '서버 응답 형식 오류';
     } on DioException catch (e) {
-      return getApiErrorMessage(e, fallback: '카카오 로그인에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '가입 처리 중 오류가 발생했습니다. 닉네임을 확인한 뒤 다시 시도해 주세요.');
     } catch (e) {
-      return getApiErrorMessage(e, fallback: '카카오 로그인에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '가입 처리 중 오류가 발생했습니다. 닉네임을 확인한 뒤 다시 시도해 주세요.');
     }
   }
 
@@ -141,9 +206,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _api.register(email, password, nickname);
       return null;
     } on DioException catch (e) {
-      return getApiErrorMessage(e, fallback: '가입에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '가입 처리에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
     } catch (e) {
-      return getApiErrorMessage(e, fallback: '가입에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '가입 처리에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.');
     }
   }
 
@@ -153,9 +218,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _api.sendVerificationEmail(email);
       return null;
     } on DioException catch (e) {
-      return getApiErrorMessage(e, fallback: '인증 메일 발송에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '인증 메일을 보내지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해 주세요.');
     } catch (e) {
-      return getApiErrorMessage(e, fallback: '인증 메일 발송에 실패했습니다.');
+      return getApiErrorMessage(e, fallback: '인증 메일을 보내지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해 주세요.');
     }
   }
 

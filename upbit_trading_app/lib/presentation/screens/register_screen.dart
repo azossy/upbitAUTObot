@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+  /// OAuth(구글/카카오) 로그인 후 미가입 시 회원가입 완료 모드. 널이면 일반 이메일 회원가입.
+  final OAuthLoginResult? oauthResult;
+
+  const RegisterScreen({super.key, this.oauthResult});
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -23,6 +25,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// 1: 환영·이메일·닉네임·비밀번호(한 화면), 2: 인증 코드
   int _step = 1;
   bool _registrationSuccess = false;
+  /// OAuth(구글/카카오) 미가입 사용자 추가 정보 입력 모드
+  bool _isOAuthMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.oauthResult != null) {
+      _isOAuthMode = true;
+      _emailController.text = widget.oauthResult!.email ?? '';
+      _nicknameController.text = widget.oauthResult!.name ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -149,6 +163,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _handleBack(BuildContext context) {
+    if (_isOAuthMode) {
+      if (context.mounted) Navigator.of(context).pop();
+      return;
+    }
     if (_step == 2) {
       setState(() {
         _step = 1;
@@ -157,6 +175,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } else {
       if (context.mounted) Navigator.of(context).pop();
     }
+  }
+
+  /// OAuth(구글/카카오) 회원가입 완료: 닉네임만 입력받고 가입
+  Future<void> _onCompleteOAuthRegister() async {
+    final nickname = _nicknameController.text.trim();
+    if (nickname.isEmpty) {
+      setState(() => _error = '닉네임을 입력하세요.');
+      return;
+    }
+    if (nickname.length > 100) {
+      setState(() => _error = '닉네임은 100자 이내로 입력하세요.');
+      return;
+    }
+    final oauth = widget.oauthResult!;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final errorMsg = await ref.read(authStateProvider.notifier).completeOAuthRegister(
+      provider: oauth.provider!,
+      idToken: oauth.idToken,
+      accessToken: oauth.accessToken,
+      nickname: nickname,
+    );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (errorMsg != null) {
+      setState(() => _error = errorMsg);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg), duration: const Duration(seconds: 4)));
+      return;
+    }
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
@@ -182,7 +232,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                if (_registrationSuccess) _buildSuccessContent(theme) else _buildStepContent(theme),
+                if (_registrationSuccess) _buildSuccessContent(theme)
+                else if (_isOAuthMode) _buildOAuthCompleteContent(theme)
+                else _buildStepContent(theme),
                 const SizedBox(height: 32),
               ],
             ),
@@ -232,6 +284,88 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 구글/카카오 로그인 후 미가입 시: 이메일(읽기 전용) + 닉네임 입력 → 가입 완료
+  Widget _buildOAuthCompleteContent(ThemeData theme) {
+    final oauth = widget.oauthResult!;
+    final providerName = oauth.provider == 'google' ? '구글' : '카카오';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$providerName 계정으로 가입하기',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '아래 닉네임을 입력한 뒤 가입을 완료하세요. 다음부터는 $providerName으로 자동 로그인됩니다.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color ?? theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(AppTheme.radiusFocus),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _emailController,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: '이메일',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nicknameController,
+                decoration: const InputDecoration(
+                  labelText: '닉네임',
+                  hintText: '한글·영문 사용 가능',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _onCompleteOAuthRegister(),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _loading ? null : _onCompleteOAuthRegister,
+                child: _loading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('가입 완료'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

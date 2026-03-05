@@ -37,6 +37,27 @@ class KakaoLoginRequest(BaseModel):
     access_token: str = Field(..., min_length=1, description="Kakao Access Token")
 
 
+class OAuthLoginResponse(BaseModel):
+    """구글/카카오 로그인 응답. 기존 회원이면 JWT, 미가입이면 need_register + email/name."""
+    need_register: bool = False
+    access_token: Optional[str] = None
+    token_type: Optional[str] = "bearer"
+    expires_in: Optional[int] = None
+    user: Optional[dict] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+
+
+class CompleteGoogleRegisterRequest(BaseModel):
+    id_token: str = Field(..., min_length=1, description="Google ID Token (재검증용)")
+    nickname: str = Field(..., min_length=1, max_length=100, description="닉네임 1~100자")
+
+
+class CompleteKakaoRegisterRequest(BaseModel):
+    access_token: str = Field(..., min_length=1, description="Kakao Access Token (재검증용)")
+    nickname: str = Field(..., min_length=1, max_length=100, description="닉네임 1~100자")
+
+
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(..., min_length=1, description="현재 비밀번호")
     new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, description="새 비밀번호 8자 이상")

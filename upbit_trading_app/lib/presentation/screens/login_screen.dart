@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import '../../config/oauth_config.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import 'register_screen.dart';
@@ -78,12 +79,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      final googleSignIn = GoogleSignIn();
+      // 공식 권장: 서버 Web Client ID를 serverClientId로 지정해야 id_token 발급됨 (백엔드 검증용)
+      final googleSignIn = GoogleSignIn(
+        serverClientId: OAuthConfig.googleWebClientId.isEmpty || OAuthConfig.googleWebClientId.startsWith('YOUR_')
+            ? null
+            : OAuthConfig.googleWebClientId,
+      );
       final account = await googleSignIn.signIn();
       if (account == null) {
-        if (mounted) {
-          setState(() => _loading = false);
-        }
+        if (mounted) setState(() => _loading = false);
         return;
       }
       final auth = await account.authentication;
@@ -92,21 +96,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) {
           setState(() {
             _loading = false;
-            _error = '구글 인증 정보를 가져오지 못했습니다.';
+            _error = '구글 로그인 설정이 필요합니다. 앱과 서버에 동일한 구글 Web 클라이언트 ID가 설정되어 있는지 확인해 주세요.';
           });
         }
         return;
       }
-      final errorMsg = await ref.read(authStateProvider.notifier).loginGoogle(idToken);
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = errorMsg;
-        });
-        if (errorMsg == null) {
-          context.go('/');
-        }
+      final result = await ref.read(authStateProvider.notifier).loginGoogle(idToken);
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (result.success) {
+        context.go('/');
+        return;
       }
+      if (result.needRegister) {
+        final nav = Navigator.of(context, rootNavigator: true);
+        await nav.push<bool>(
+          MaterialPageRoute<bool>(
+            builder: (_) => RegisterScreen(oauthResult: result),
+          ),
+        );
+        if (mounted && ref.read(authStateProvider).isLoggedIn) context.go('/');
+        return;
+      }
+      setState(() => _error = result.errorMessage);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -124,16 +136,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       OAuthToken token = await UserApi.instance.loginWithKakaoAccount();
-      final errorMsg = await ref.read(authStateProvider.notifier).loginKakao(token.accessToken);
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = errorMsg;
-        });
-        if (errorMsg == null) {
-          context.go('/');
-        }
+      final result = await ref.read(authStateProvider.notifier).loginKakao(token.accessToken);
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (result.success) {
+        context.go('/');
+        return;
       }
+      if (result.needRegister) {
+        final nav = Navigator.of(context, rootNavigator: true);
+        await nav.push<bool>(
+          MaterialPageRoute<bool>(
+            builder: (_) => RegisterScreen(oauthResult: result),
+          ),
+        );
+        if (mounted && ref.read(authStateProvider).isLoggedIn) context.go('/');
+        return;
+      }
+      setState(() => _error = result.errorMessage);
     } catch (e) {
       if (mounted) {
         setState(() {

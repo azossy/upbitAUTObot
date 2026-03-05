@@ -17,6 +17,9 @@ from app.schemas.auth import (
     LoginRequest,
     GoogleLoginRequest,
     KakaoLoginRequest,
+    OAuthLoginResponse,
+    CompleteGoogleRegisterRequest,
+    CompleteKakaoRegisterRequest,
     PasswordChangeRequest,
     ProfileUpdateRequest,
     TokenResponse,
@@ -184,24 +187,30 @@ def _make_token_response(user: User):
     )
 
 
-@router.post("/google", response_model=TokenResponse)
-async def login_google(
-    req: GoogleLoginRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """구글 로그인. id_token 검증 후 사용자 생성/조회하여 JWT 반환."""
+def _verify_google_id_token(id_token: str):
+    """구글 id_token 검증. 공식: 서버 Web Client ID로 검증 (audience)."""
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="구글 로그인이 설정되지 않았습니다.")
     try:
         from google.oauth2 import id_token
         from google.auth.transport import requests as google_requests
         id_info = id_token.verify_oauth2_token(
-            req.id_token,
+            id_token,
             google_requests.Request(),
             settings.GOOGLE_CLIENT_ID,
         )
+        return id_info
     except Exception:
         raise HTTPException(status_code=401, detail="구글 토큰 검증에 실패했습니다.")
+
+
+@router.post("/google", response_model=OAuthLoginResponse)
+async def login_google(
+    req: GoogleLoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """구글 로그인. id_token 검증 후 기존 회원이면 JWT, 미가입이면 need_register+email/name 반환."""
+    id_info = _verify_google_id_token(req.id_token)
     google_id = str(id_info.get("sub", ""))
     email = id_info.get("email") or f"google_{google_id}@oauth.local"
     name = id_info.get("name") or email.split("@")[0]
@@ -214,38 +223,40 @@ async def login_google(
             user.google_id = google_id
             await db.commit()
             await db.refresh(user)
-        else:
-            user = User(
-                email=email,
-                password_hash=hash_password(google_id + "_oauth_placeholder"),
-                nickname=name[:100],
-                role=UserRole.USER,
-                google_id=google_id,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-    resp = _make_token_response(user)
-    await db.commit()
-    return resp
+    if user:
+        resp = _make_token_response(user)
+        await db.commit()
+        return OAuthLoginResponse(
+            need_register=False,
+            access_token=resp.access_token,
+            token_type=resp.token_type,
+            expires_in=resp.expires_in,
+            user=resp.user,
+        )
+    return OAuthLoginResponse(need_register=True, email=email, name=name[:100])
 
 
-@router.post("/kakao", response_model=TokenResponse)
-async def login_kakao(
-    req: KakaoLoginRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """카카오 로그인. access_token으로 사용자 정보 조회 후 JWT 반환."""
+async def _fetch_kakao_user(access_token: str):
+    """카카오 access_token으로 사용자 정보 조회."""
     if not settings.KAKAO_REST_API_KEY:
         raise HTTPException(status_code=503, detail="카카오 로그인이 설정되지 않았습니다.")
     async with httpx.AsyncClient() as client:
         r = await client.get(
             "https://kapi.kakao.com/v2/user/me",
-            headers={"Authorization": f"Bearer {req.access_token}"},
+            headers={"Authorization": f"Bearer {access_token}"},
         )
     if r.status_code != 200:
         raise HTTPException(status_code=401, detail="카카오 토큰 검증에 실패했습니다.")
-    data = r.json()
+    return r.json()
+
+
+@router.post("/kakao", response_model=OAuthLoginResponse)
+async def login_kakao(
+    req: KakaoLoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """카카오 로그인. 기존 회원이면 JWT, 미가입이면 need_register+email/name 반환."""
+    data = await _fetch_kakao_user(req.access_token)
     kakao_id = str(data.get("id", ""))
     kakao_account = data.get("kakao_account") or {}
     email = kakao_account.get("email") or f"kakao_{kakao_id}@oauth.local"
@@ -260,20 +271,77 @@ async def login_kakao(
             user.kakao_id = kakao_id
             await db.commit()
             await db.refresh(user)
-        else:
-            user = User(
-                email=email,
-                password_hash=hash_password(kakao_id + "_oauth_placeholder"),
-                nickname=name[:100],
-                role=UserRole.USER,
-                kakao_id=kakao_id,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-    resp = _make_token_response(user)
+    if user:
+        resp = _make_token_response(user)
+        await db.commit()
+        return OAuthLoginResponse(
+            need_register=False,
+            access_token=resp.access_token,
+            token_type=resp.token_type,
+            expires_in=resp.expires_in,
+            user=resp.user,
+        )
+    return OAuthLoginResponse(need_register=True, email=email, name=name[:100])
+
+
+@router.post("/complete-google-register", response_model=TokenResponse)
+async def complete_google_register(
+    req: CompleteGoogleRegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """구글 미가입 사용자가 닉네임 입력 후 회원가입 완료. id_token 재검증 후 가입."""
+    id_info = _verify_google_id_token(req.id_token)
+    google_id = str(id_info.get("sub", ""))
+    email = id_info.get("email") or f"google_{google_id}@oauth.local"
+    name = id_info.get("name") or req.nickname.strip()[:100] or email.split("@")[0]
+    existing = await db.execute(select(User).where(User.google_id == google_id))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 가입된 구글 계정입니다.")
+    existing_email = await db.execute(select(User).where(User.email == email))
+    if existing_email.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+    user = User(
+        email=email,
+        password_hash=hash_password(google_id + "_oauth_placeholder"),
+        nickname=(req.nickname.strip() or name)[:100],
+        role=UserRole.USER,
+        google_id=google_id,
+    )
+    db.add(user)
     await db.commit()
-    return resp
+    await db.refresh(user)
+    return _make_token_response(user)
+
+
+@router.post("/complete-kakao-register", response_model=TokenResponse)
+async def complete_kakao_register(
+    req: CompleteKakaoRegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """카카오 미가입 사용자가 닉네임 입력 후 회원가입 완료. access_token 재검증 후 가입."""
+    data = await _fetch_kakao_user(req.access_token)
+    kakao_id = str(data.get("id", ""))
+    kakao_account = data.get("kakao_account") or {}
+    email = kakao_account.get("email") or f"kakao_{kakao_id}@oauth.local"
+    profile = kakao_account.get("profile") or {}
+    name = profile.get("nickname") or req.nickname.strip()[:100] or email.split("@")[0]
+    existing = await db.execute(select(User).where(User.kakao_id == kakao_id))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 가입된 카카오 계정입니다.")
+    existing_email = await db.execute(select(User).where(User.email == email))
+    if existing_email.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+    user = User(
+        email=email,
+        password_hash=hash_password(kakao_id + "_oauth_placeholder"),
+        nickname=(req.nickname.strip() or name)[:100],
+        role=UserRole.USER,
+        kakao_id=kakao_id,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return _make_token_response(user)
 
 
 @router.get("/me", response_model=UserResponse)

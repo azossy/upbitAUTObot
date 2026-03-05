@@ -37,6 +37,10 @@ http://{서버주소}:8000
 | POST | /register | 회원가입 |
 | POST | /login | 로그인 |
 | POST | /refresh | Access Token 갱신 |
+| POST | /google | 구글 로그인 (id_token). 미가입 시 need_register+email/name 반환 |
+| POST | /kakao | 카카오 로그인 (access_token). 미가입 시 need_register+email/name 반환 |
+| POST | /complete-google-register | 구글 OAuth 회원가입 완료 (id_token, nickname) |
+| POST | /complete-kakao-register | 카카오 OAuth 회원가입 완료 (access_token, nickname) |
 | POST | /logout | 로그아웃 |
 | GET | /me | 내 정보 조회 |
 | PUT | /me | 프로필 수정 |
