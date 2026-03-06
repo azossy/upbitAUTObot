@@ -14,8 +14,8 @@
 ### 1단계: Android 앱 받기
 
 1. **[Releases](https://github.com/azossy/upbitAUTObot/releases)** 페이지로 갑니다.
-2. 가장 위에 있는 **최신 버전**(예: v1.4.3)을 클릭합니다.
-3. **Assets** 안에 있는 **baejjangi-1-4-3.apk** (또는 app-release.apk) 를 눌러 다운로드합니다.
+2. 가장 위에 있는 **최신 버전**(예: v1.4.8)을 클릭합니다.
+3. **Assets** 안에 있는 **baejjangi-버전.apk** (예: baejjangi-1.4.8.apk) 를 눌러 다운로드합니다.
 4. 다운로드한 APK 파일을 **휴대폰으로 옮깁니다.** (USB, 클라우드, 메신저 등 편한 방법으로)
 5. 휴대폰에서 APK 파일을 탭해 **설치**합니다.  
    - "알 수 없는 앱 설치" 허용이 뜨면 **허용**을 선택해 주세요.
@@ -93,7 +93,23 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 |------|------|
 | **앱** | Flutter (Android). 로그인(이메일·구글·카카오), 생체인증, 대시보드, 포지션, 거래내역, 설정 |
 | **서버** | Python FastAPI. 인증(JWT), 업비트 API 연동, 봇 제어, SQLite DB |
+| **개미엔진** | 트레이딩 시그널 엔진 (바이너리 제공). 진입·매각 판단의 핵심. 아래 참고. |
 | **푸시** | FCM + 텔레그램 (선택) |
+
+### 🐜 개미엔진 (AntEngine) — 배짱이의 핵심
+
+**개미엔진 v0.9**가 드디어 완성되었습니다. 배짱이에서 **“언제 사고, 언제 팔지”** 를 결정하는 **가장 중요한 심장부**입니다.
+
+- **엄청난 양의 데이터**를 분석하고, 수많은 시나리오로 검증·테스트한 뒤 설계되었습니다.
+- **현물 거래**, 그중에서도 **업비트 현물**에 맞춰 최적화되어 있어, 국내 시장과 업비트 API 특성에 잘 맞게 동작합니다.
+- 캔들·지표·손절/익절 조건을 **입출력 규격**에 맞춰 처리하며, 추후 전략 개선 시에도 **엔진만 교체**해 나갈 수 있도록 설계되어 있습니다.
+
+**제공 방식에 대해 안내드립니다.**  
+개미엔진은 **실행 가능한 바이너리 파일만** 제공하며, **소스 코드는 공개하지 않습니다.**  
+그래서 저장소를 clone 하시면 `ant_engine/release/` 폴더 안에 **AntEngine-버전.bin** (예: AntEngine-0.9.bin) 형태로 받으실 수 있고, 이 파일을 서버(Jetson, Ubuntu 등)에서 실행해 사용하시면 됩니다.  
+“어떤 데이터를 넣으면 어떤 시그널이 나오는지”는 [docs/트레이딩_엔진_입출력_연동_가이드.md](docs/트레이딩_엔진_입출력_연동_가이드.md) 에 **친절하게** 정리해 두었으니, 엔진만 따로 연동하고 싶으신 분도 문서만 보시면 됩니다.
+
+👉 자세한 기획·버전 정보·빌드 방법은 [docs/개미엔진_AntEngine.md](docs/개미엔진_AntEngine.md) 와 [ant_engine/README.md](ant_engine/README.md) 를 참고하세요.
 
 ### 사용 흐름
 
@@ -163,13 +179,13 @@ cp .env.example .env
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.4.3"}` 이 나오면 정상입니다.  
+브라우저에서 `http://서버IP:8000/health` 로 `{"status":"ok","version":"1.4.8"}` 이 나오면 정상입니다.  
 상시 실행은 [docs/설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) 의 systemd 예시를 참고하세요.
 
 ### 3. Android 앱 — APK 받기 또는 직접 빌드
 
 **방법 A: 이미 빌드된 APK 사용 (권장)**  
-- [Releases](https://github.com/azossy/upbitAUTObot/releases) 에서 최신 버전의 **baejjangi-1-4-3.apk** (또는 app-release.apk) 다운로드 후 Android 기기에 설치.
+- [Releases](https://github.com/azossy/upbitAUTObot/releases) 에서 최신 버전의 **baejjangi-버전.apk** (예: baejjangi-1.4.8.apk) 다운로드 후 Android 기기에 설치.
 
 **방법 B: 직접 빌드 후 GitHub Release에 올리기**
 
@@ -180,8 +196,8 @@ APK를 직접 컴파일해서 GitHub에 올리려면:
    **Mac/Linux**: `cd upbit_trading_app && flutter pub get && flutter build apk --release`
 3. 빌드가 끝나면 `upbit_trading_app/build/app/outputs/flutter-apk/app-release.apk` 가 생성됩니다.
 4. 이 APK를 **GitHub Release**에 올리려면 (GitHub CLI 설치 후):  
-   `gh release upload v1.4.3 upbit_trading_app/build/app/outputs/flutter-apk/baejjangi-1-4-3.apk --repo azossy/upbitAUTObot --clobber`  
-   (버전 태그 `v1.4.3`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.4.3 --title "배짱이 v1.4.3"` 로 생성한 뒤 upload 하세요.)
+   `gh release upload v1.4.8 upbit_trading_app/build/app/outputs/flutter-apk/baejjangi-1-4-8.apk --repo azossy/upbitAUTObot --clobber`  
+   (버전 태그 `v1.4.8`은 이미 만든 Release가 있어야 합니다. 새 버전이면 먼저 `gh release create v1.4.8 --title "배짱이 v1.4.8"` 로 생성한 뒤 upload 하세요.)
 
 자세한 절차는 [docs/APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) 를 참고하세요.
 
@@ -245,7 +261,7 @@ upbitAUTObot/
 ├── backend/              # FastAPI 서버 (Python)
 │   ├── app/
 │   │   ├── routers/      # API 라우트 (auth, bot, market, news)
-│   │   ├── trading/      # 트레이딩 엔진, 업비트 클라이언트
+│   │   ├── trading/      # 트레이딩·업비트 클라이언트
 │   │   ├── services/     # 알림(텔레그램, FCM) 등
 │   │   └── ...
 │   ├── main.py
@@ -254,12 +270,18 @@ upbitAUTObot/
 │   ├── README_BAEJJANGI.md # baejjangi CLI 상세 사용법
 │   ├── requirements.txt
 │   └── .env.example
+├── ant_engine/           # 개미엔진 (AntEngine) — 트레이딩 시그널 엔진 (C++, 바이너리 제공)
+│   ├── release/         # AntEngine-버전.bin (Linux aarch64, Jetson 등)
+│   ├── include/, src/   # 엔진 소스 (배포용 바이너리는 release/ 에서 제공)
+│   └── README.md
 ├── upbit_trading_app/    # Flutter Android 앱
 │   ├── lib/
 │   └── pubspec.yaml
-├── docs/                 # 기획·배포·트레이딩 로직 문서
+├── docs/                 # 기획·배포·트레이딩 로직·엔진 입출력 가이드
 │   ├── 설치_및_배포_가이드.md
 │   ├── 트레이딩_로직_상세_가이드.md
+│   ├── 개미엔진_AntEngine.md
+│   ├── 트레이딩_엔진_입출력_연동_가이드.md
 │   └── ...
 ├── qna.txt               # 질문·답변 형식 사용법 및 에러 시 대처법
 └── README.md
@@ -274,6 +296,8 @@ upbitAUTObot/
 | [트레이딩_로직_상세_가이드.md](docs/트레이딩_로직_상세_가이드.md) | **진입·매각 로직** (요약 표·예시·FAQ 포함) |
 | [설치_및_배포_가이드.md](docs/설치_및_배포_가이드.md) | 서버 설치·Jetson·배포·점검 통합 |
 | [APK_빌드_및_배포.md](docs/APK_빌드_및_배포.md) | APK 직접 빌드·GitHub Release 업로드 방법 |
+| [개미엔진_AntEngine.md](docs/개미엔진_AntEngine.md) | 개미엔진(AntEngine) 버전·빌드·실행·문서 링크 |
+| [트레이딩_엔진_입출력_연동_가이드.md](docs/트레이딩_엔진_입출력_연동_가이드.md) | 엔진 입·출력 규격·연동 방법 (바이너리만 사용 시 참고) |
 | [API_명세서.md](docs/API_명세서.md) | 백엔드 API 요약 |
 | [backend/README_BAEJJANGI.md](backend/README_BAEJJANGI.md) | **baejjangi CLI** 상세 사용법·빌드·서비스 제어 |
 

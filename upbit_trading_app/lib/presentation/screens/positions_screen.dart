@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format.dart';
 import '../../providers/locale_provider.dart';
 
 void _goToLoginPositions(BuildContext context, WidgetRef ref) {
@@ -251,7 +252,7 @@ class _PositionTile extends StatelessWidget {
         ),
         title: Text(coin, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
-          '$qty · 평균 ${avgPrice >= 10000 ? "${(avgPrice / 10000).toStringAsFixed(0)}만원" : avgPrice.toStringAsFixed(0)}',
+          '$qty · 평균 ${formatKrw(avgPrice.toInt())}원',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
         ),
         trailing: avgPrice > 0

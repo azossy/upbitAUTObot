@@ -68,3 +68,7 @@ upbit-trading-system/
 # 로컬 보관용 (참조가치 적거나 판단 보류 문서, GitHub 미배포)
 *.old
 **/*.old
+
+# Pretendard 폰트 다운로드 임시 (실제 폰트는 assets/fonts에 복사됨)
+upbit_trading_app/PretendardStd.zip
+upbit_trading_app/pretendard_extract/

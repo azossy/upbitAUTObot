@@ -2,18 +2,22 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
-/// 수익률 차트 표시 형태: 막대 / 라인 / 영역
-enum PnlSummaryChartType { bar, line, area }
+/// 수익률 차트 표시 형태: 막대 / 꺾은선 / 히스토그램(히트맵)
+enum PnlSummaryChartType { bar, line, heatmap }
 
-/// 수익률 차트 (일일, 주간 %). 3가지 형태(막대/라인/영역) 전환 가능.
+/// 수익률 추이 (일일, 주간, 월간, 누적 %). 3가지 형태(막대/꺾은선/히트맵) 전환 가능.
 class PnlChart extends StatefulWidget {
   final double dailyPnl;
   final double weeklyPnl;
+  final double monthlyPnl;
+  final double cumulativePnl;
 
   const PnlChart({
     super.key,
     required this.dailyPnl,
     required this.weeklyPnl,
+    this.monthlyPnl = 0.0,
+    this.cumulativePnl = 0.0,
   });
 
   @override
@@ -26,6 +30,8 @@ class _PnlChartState extends State<PnlChart> {
   List<({String label, double value})> get _items => [
         (label: '일일', value: widget.dailyPnl),
         (label: '주간', value: widget.weeklyPnl),
+        (label: '월간', value: widget.monthlyPnl),
+        (label: '누적', value: widget.cumulativePnl),
       ];
 
   @override
@@ -65,9 +71,9 @@ class _PnlChartState extends State<PnlChart> {
                 ),
                 _chartIconButton(PnlSummaryChartType.bar, Icons.bar_chart, '막대'),
                 const SizedBox(width: 4),
-                _chartIconButton(PnlSummaryChartType.line, Icons.show_chart, '라인'),
+                _chartIconButton(PnlSummaryChartType.line, Icons.show_chart, '꺾은선'),
                 const SizedBox(width: 4),
-                _chartIconButton(PnlSummaryChartType.area, Icons.area_chart, '영역'),
+                _chartIconButton(PnlSummaryChartType.heatmap, Icons.gradient, '히트맵'),
               ],
             ),
             const SizedBox(height: 20),
@@ -75,7 +81,7 @@ class _PnlChartState extends State<PnlChart> {
               height: 180,
               child: _chartType == PnlSummaryChartType.bar
                   ? _buildBarChart(theme, labelColor, positiveColor, negativeColor, maxY, minY, padding)
-                  : _buildLineOrAreaChart(theme, labelColor, positiveColor, maxY, minY, padding),
+                  : _buildLineOrHeatmapChart(theme, labelColor, positiveColor, maxY, minY, padding),
             ),
           ],
         ),
@@ -203,7 +209,7 @@ class _PnlChartState extends State<PnlChart> {
     );
   }
 
-  Widget _buildLineOrAreaChart(
+  Widget _buildLineOrHeatmapChart(
     ThemeData theme,
     Color labelColor,
     Color lineColor,
@@ -212,13 +218,20 @@ class _PnlChartState extends State<PnlChart> {
     double padding,
   ) {
     final spots = _items.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.value)).toList();
+    final isHeatmap = _chartType == PnlSummaryChartType.heatmap;
     final fillGradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [
-        lineColor.withOpacity(0.35),
-        lineColor.withOpacity(0.05),
-      ],
+      colors: isHeatmap
+          ? [
+              Colors.orange.shade400.withOpacity(0.5),
+              Colors.deepOrange.shade200.withOpacity(0.2),
+              Colors.orange.shade100.withOpacity(0.05),
+            ]
+          : [
+              lineColor.withOpacity(0.35),
+              lineColor.withOpacity(0.05),
+            ],
     );
 
     return LineChart(
@@ -251,12 +264,12 @@ class _PnlChartState extends State<PnlChart> {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: lineColor,
-            barWidth: 2.5,
+            color: isHeatmap ? Colors.orange.shade700 : lineColor,
+            barWidth: isHeatmap ? 4 : 2.5,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
-              show: _chartType == PnlSummaryChartType.area,
+              show: true,
               gradient: fillGradient,
             ),
           ),

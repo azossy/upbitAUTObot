@@ -311,22 +311,15 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // 봇 설정 / 비밀번호 변경
+              // 설정 (서버·API 키·봇·계정 등 한곳에서 관리)
               Card(
                 child: Column(
                   children: [
                     ListTile(
                       leading: const Icon(Icons.settings),
-                      title: Text(l10n.botSettings),
+                      title: Text(l10n.settings),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.go('/settings'),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.lock_outline),
-                      title: Text(l10n.passwordChange),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.go('/settings/password'),
+                      onTap: () => context.go('/my/settings'),
                     ),
                     const Divider(height: 1),
                     ListTile(

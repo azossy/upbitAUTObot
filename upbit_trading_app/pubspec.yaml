@@ -1,7 +1,7 @@
 name: upbit_trading_app
 description: 배짱이 v1.1 — 업비트 연동 자동매매 앱
 publish_to: 'none'
-version: 1.4.7+11
+version: 1.4.8+12
 # 저작자: 차리 (challychoi@me.com)
 
 environment:
@@ -37,6 +37,18 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/fonts/
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
 
 # 배짱이 앱 아이콘 (MS 앱 아이콘 디자인 가이드라인 반영)
 # https://learn.microsoft.com/ko-kr/windows/apps/design/style/iconography/app-icon-design

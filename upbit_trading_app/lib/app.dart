@@ -64,7 +64,7 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
         final path = state.uri.path;
         if (loc == '/register' || path == '/register' || path.startsWith('/register')) return null;
 
-        final isAuthRoute = loc == '/login' || loc == '/register';
+        final isAuthRoute = loc == '/login' || path == '/register';
         bool loggedIn = false;
         try {
           loggedIn = ref.read(authStateProvider).isLoggedIn;
@@ -80,16 +80,80 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
       routes: [
         GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
         GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-        GoRoute(
-          path: '/',
-          builder: (_, __) => const DashboardScreen(),
-          routes: [
-            GoRoute(path: 'positions', builder: (_, __) => const PositionsScreen()),
-            GoRoute(path: 'trades', builder: (_, __) => const TradesScreen()),
-            GoRoute(path: 'news', builder: (_, __) => const NewsScreen()),
-            GoRoute(path: 'my', builder: (_, __) => const MyScreen()),
-            GoRoute(path: 'settings', builder: (_, __) => const SettingsScreen(), routes: [
-              GoRoute(path: 'password', builder: (_, __) => const PasswordChangeScreen()),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            final path = state.uri.path;
+            int index = 0;
+            if (path.startsWith('/positions')) {
+              index = 1;
+            } else if (path.startsWith('/trades')) {
+              index = 2;
+            } else if (path.startsWith('/news')) {
+              index = 3;
+            } else if (path.startsWith('/my')) {
+              index = 4;
+            }
+            final l10n = ref.read(appLocalizationsProvider);
+            return Scaffold(
+              body: navigationShell,
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: index,
+                onDestinationSelected: (i) {
+                  switch (i) {
+                    case 0:
+                      context.go('/');
+                      break;
+                    case 1:
+                      context.go('/positions');
+                      break;
+                    case 2:
+                      context.go('/trades');
+                      break;
+                    case 3:
+                      context.go('/news');
+                      break;
+                    case 4:
+                      context.go('/my');
+                      break;
+                  }
+                },
+                destinations: [
+                  NavigationDestination(icon: const Icon(Icons.home), label: l10n.navDashboard),
+                  NavigationDestination(icon: const Icon(Icons.account_balance_wallet), label: l10n.navPositions),
+                  NavigationDestination(icon: const Icon(Icons.list), label: l10n.navTrades),
+                  NavigationDestination(icon: const Icon(Icons.newspaper), label: l10n.navNews),
+                  NavigationDestination(icon: const Icon(Icons.person), label: l10n.navMy),
+                ],
+              ),
+            );
+          },
+          branches: [
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/positions', builder: (_, __) => const PositionsScreen()),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/trades', builder: (_, __) => const TradesScreen()),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/news', builder: (_, __) => const NewsScreen()),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                path: '/my',
+                builder: (_, __) => const MyScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'settings',
+                    builder: (_, __) => const SettingsScreen(),
+                    routes: [
+                      GoRoute(path: 'password', builder: (_, __) => const PasswordChangeScreen()),
+                    ],
+                  ),
+                ],
+              ),
             ]),
           ],
         ),

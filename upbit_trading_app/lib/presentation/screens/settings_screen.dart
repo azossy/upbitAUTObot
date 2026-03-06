@@ -102,6 +102,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _showServerAddressDialog() async {
+    final controller = TextEditingController(text: _apiBaseUrlController.text.trim());
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('API 서버 주소 변경'),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'API 서버 주소',
+              hintText: 'https://example.com:8000',
+              helperText: 'http:// 또는 https:// 로 시작해야 합니다.',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.url,
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      _apiBaseUrlController.text = controller.text.trim();
+      await _saveApiBaseUrl();
+      if (mounted) setState(() {});
+    }
+  }
+
   Future<void> _saveApiBaseUrl() async {
     final url = _apiBaseUrlController.text.trim();
     if (url.isEmpty) {
@@ -134,6 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     ref.read(apiServiceProvider).updateBaseUrl(url);
     if (mounted) {
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('API 서버 주소가 저장되었습니다.'),
@@ -340,7 +379,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: Text(l10n.settings),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/'),
+            onPressed: () => context.go('/my'),
           ),
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -352,7 +391,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: Text(l10n.settings),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.go('/my'),
         ),
       ),
       body: SingleChildScrollView(
@@ -393,40 +432,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // 서버 주소 바꾸기 — 기본값은 Jetson, 바뀌면 여기서 새 주소 입력·저장
+            // API 서버 주소 — 현재값 표시 + 변경 버튼으로 입력창 노출 방지
             Text(
-              '서버 주소 바꾸기',
+              'API 서버 주소',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
-              '기본은 우리 Jetson 서버입니다. 서버 주소가 바뀌면 아래에 새 주소를 입력한 뒤 저장하세요.',
+              '서버 주소가 바뀌면 변경 버튼을 눌러 새 주소를 입력하세요. http:// 또는 https:// 로 시작해야 합니다.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _apiBaseUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'API 서버 주소',
-                        hintText: 'http://100.80.178.45:8000',
-                        helperText: 'http:// 또는 https:// 로 시작. 연결이 안 되면 주소와 백엔드 실행 여부를 확인하세요.',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.url,
-                      onSubmitted: (_) => _saveApiBaseUrl(),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _saveApiBaseUrl,
-                      child: const Text('서버 주소 저장'),
-                    ),
-                  ],
+              child: ListTile(
+                title: Text(
+                  _apiBaseUrlController.text.trim().isEmpty
+                      ? '미설정'
+                      : _apiBaseUrlController.text.trim(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: _serverConnected != null
+                    ? Text(
+                        _serverConnected == true ? '연결됨' : '연결 끊김',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _serverConnected == true ? Colors.green : Theme.of(context).colorScheme.error,
+                        ),
+                      )
+                    : null,
+                trailing: FilledButton.tonal(
+                  onPressed: _showServerAddressDialog,
+                  child: const Text('변경'),
                 ),
               ),
             ),
@@ -444,7 +484,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     leading: Icon(Icons.lock_outline, color: Theme.of(context).colorScheme.primary),
                     title: const Text('비밀번호 변경'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/settings/password'),
+                    onTap: () => context.push('/my/settings/password'),
                   ),
                   if (_biometricAvailable) ...[
                     const Divider(height: 1),

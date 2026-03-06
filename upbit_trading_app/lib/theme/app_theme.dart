@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+// ignore_for_file: prefer_const_constructors -- BorderRadius.circular, resolveWith 등으로 const 불가한 생성자만 남음
+
 /// One UI Design Guidelines 기반 테마
 /// - Primary 오렌지 #FF6B00 (아이콘·강조)
 /// - Primary dark #E65100
@@ -19,9 +21,12 @@ class AppTheme {
   /// 좌우 여백 (기존 24의 80% = 19.2, 화면이 넓어 보이도록)
   static const double marginHorizontal = 19.2;
 
+  static const String _fontFamily = 'Pretendard';
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: _fontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: primary,
@@ -42,6 +47,7 @@ class AppTheme {
         backgroundColor: surfaceLight,
         foregroundColor: Colors.black,
         titleTextStyle: TextStyle(
+          fontFamily: _fontFamily,
           color: Colors.black,
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -75,20 +81,23 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusInput),
           borderSide: const BorderSide(color: Colors.red),
         ),
-        labelStyle: TextStyle(color: Colors.grey.shade700),
+        labelStyle: TextStyle(fontFamily: _fontFamily, color: Colors.grey.shade700),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(88, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusInput),
           ),
           textStyle: const TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -97,20 +106,28 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(88, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusInput),
           ),
           textStyle: const TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primary,
-          textStyle: const TextStyle(fontWeight: FontWeight.w500),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: const TextStyle(
+            fontFamily: _fontFamily,
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
+          ),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -119,13 +136,15 @@ class AppTheme {
         indicatorColor: primary.withOpacity(0.2),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(
+            return TextStyle(
+              fontFamily: _fontFamily,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: primary,
             );
           }
           return TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 12,
             color: Colors.grey.shade600,
           );
@@ -136,17 +155,33 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusInput),
         ),
-        contentTextStyle: const TextStyle(fontSize: 14),
+        contentTextStyle: const TextStyle(fontFamily: _fontFamily, fontSize: 14),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(88, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusInput),
+          ),
+          textStyle: const TextStyle(
+            fontFamily: _fontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
       ),
       dialogTheme: DialogTheme(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusFocus),
         ),
         titleTextStyle: const TextStyle(
+          fontFamily: _fontFamily,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        contentTextStyle: const TextStyle(fontSize: 14),
+        contentTextStyle: const TextStyle(fontFamily: _fontFamily, fontSize: 14),
       ),
     );
   }
@@ -175,6 +210,7 @@ class AppTheme {
         backgroundColor: surfaceDark,
         foregroundColor: Colors.white,
         titleTextStyle: TextStyle(
+          fontFamily: _fontFamily,
           color: Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -204,20 +240,23 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusInput),
           borderSide: const BorderSide(color: controlActive, width: 2),
         ),
-        labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
+        labelStyle: TextStyle(fontFamily: _fontFamily, color: const Color(0xFF8E8E93)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: controlActive,
           foregroundColor: Colors.black,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(88, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusInput),
           ),
           textStyle: const TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
@@ -228,15 +267,17 @@ class AppTheme {
         indicatorColor: controlActive.withOpacity(0.25),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(
+            return TextStyle(
+              fontFamily: _fontFamily,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: controlActive,
             );
           }
-          return const TextStyle(
+          return TextStyle(
+            fontFamily: _fontFamily,
             fontSize: 12,
-            color: Color(0xFF8E8E93),
+            color: const Color(0xFF8E8E93),
           );
         }),
       ),
@@ -246,11 +287,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusFocus),
         ),
         titleTextStyle: const TextStyle(
+          fontFamily: _fontFamily,
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
-        contentTextStyle: const TextStyle(fontSize: 14, color: Colors.white70),
+        contentTextStyle: const TextStyle(fontFamily: _fontFamily, fontSize: 14, color: Colors.white70),
       ),
     );
   }

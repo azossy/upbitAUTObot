@@ -7,6 +7,7 @@ import '../../services/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
 import '../../providers/locale_provider.dart';
+import '../../utils/dashboard_messages.dart';
 import '../widgets/pnl_chart.dart';
 import '../widgets/pnl_history_chart.dart';
 
@@ -139,14 +140,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   double get _totalAssetsKrw => _cashKrw + _botAssetsKrw;
 
-  String _balanceMessage(String error) {
-    if (error.contains('등록') || error.contains('API 키를')) {
-      return '아직 upbit API키 값이 등록되지 않았습니다';
+  /// 월간 수익률(%): 최근 30일 pnl 합산 기준으로 근사
+  double get _monthlyPnl {
+    if (_pnlHistory.isEmpty) return 0.0;
+    double sum = 0.0;
+    final startKrw = (_status?['session_start_krw'] as num?)?.toDouble();
+    if (startKrw == null || startKrw <= 0) return 0.0;
+    for (final e in _pnlHistory) {
+      final v = (e['pnl_krw'] as num?)?.toDouble() ?? (e['pnl'] as num?)?.toDouble() ?? 0.0;
+      sum += v;
     }
-    if (error.contains('복호화') || error.contains('틀렸') || error.contains('invalid') || error.contains('401') || error.contains('Unauthorized')) {
-      return '키값이 틀렸습니다';
-    }
-    return error;
+    return (sum / startKrw) * 100;
   }
 
   Widget _buildTotalReturnChip(BuildContext context) {
@@ -261,6 +265,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  String get _nickname => (_profile?['nickname'] ?? ref.read(authStateProvider).user?['nickname'] ?? '') as String;
+
+  String _resolveDashboardMessage() {
+    final hasError = _balance != null && _balance!['error'] != null;
+    final errStr = hasError ? (_balance!['error'] as String? ?? '') : '';
+    final hasApiKeyError = errStr.contains('등록') || errStr.contains('API 키를') || errStr.isEmpty && hasError;
+    final dailyPnl = (_status?['daily_pnl'] as num?)?.toDouble();
+    final weeklyPnl = (_status?['weekly_pnl'] as num?)?.toDouble();
+    final type = DashboardMessages.resolveType(
+      hasApiKeyError: hasApiKeyError,
+      hasBalanceError: hasError,
+      isFirstVisitToday: true,
+      isReturnUser: false,
+      dailyPnl: dailyPnl,
+      weeklyPnl: weeklyPnl,
+      hasPositions: _positions.isNotEmpty,
+      botRunning: _botRunning,
+      isNewUser: _profile == null && _balance == null,
+    );
+    return DashboardMessages.getMessage(type: type, nickname: _nickname);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading && _status == null) {
@@ -278,6 +304,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Center(child: _buildProfileLeading(context)),
         ),
         leadingWidth: 180,
+        centerTitle: true,
         title: Text(l10n.navDashboard),
         actions: [
           IconButton(
@@ -342,15 +369,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(height: 16),
               ],
               if (_balance != null) ...[
-                // 총보유자산 (상단)
-                Text(
-                  '총보유자산',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                // 총보유자산 (상단, 우측 정렬)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '총보유자산',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       '${formatKrw(_totalAssetsKrw.toInt())}원',
@@ -366,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // 현금보유고(원화잔고) | 봇운영보유고 (2분할)
+                // 현금보유고(원화잔고) | 봇운영보유고 (2분할, 숫자 우측 정렬)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -375,12 +406,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(14),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(
-                                '현금보유고(원화잔고)',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '현금보유고(원화잔고)',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -393,19 +427,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
-                              if (_balance!['error'] != null && (_balance!['error'] as String).isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    _balanceMessage(_balance!['error'] as String),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.error,
-                                      fontSize: 11,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -417,12 +438,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(14),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(
-                                '봇운영보유고',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '봇운영보유고',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -440,8 +464,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                // 안내 메시지 영역 (상황별 문구)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                  ),
+                  child: Text(
+                    _resolveDashboardMessage(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
               ],
+              // 수익 현황 (주요 시세보다 위로 이동)
+              Text(
+                '수익 현황',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _StatCard(title: '일일', value: '${_status?['daily_pnl'] ?? 0}%')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _StatCard(title: '주간', value: '${_status?['weekly_pnl'] ?? 0}%')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _StatCard(title: '승률', value: '${_status?['win_rate'] ?? 0}%')),
+                ],
+              ),
+              const SizedBox(height: 16),
               // 주요 시세 (실시간 ticker, 60초 주기 갱신)
               Text(
                 '주요 시세',
@@ -450,7 +507,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 8),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: _tickerData.isEmpty
                       ? Text(
                           '—',
@@ -465,14 +522,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             final change = t['change'] as String?;
                             final isRise = change == 'RISE';
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.only(bottom: 6),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
                                     children: [
                                       _CoinLogo(symbol: symbol),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 8),
                                       Text(
                                         symbol,
                                         style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -503,13 +560,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // 자동매매 책임 안내 (디스클레이머) — 봇 버튼 위
+              // 자동매매 책임 안내 (디스클레이머)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   '자동매매로 인한 손실은 사용자 책임이며, 서비스는 투자 결과에 대해 책임지지 않습니다.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    height: 1.4,
                   ),
                 ),
               ),
@@ -551,7 +609,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: FilledButton.tonalIcon(
                                 onPressed: () => _stopBot(afterSell: true),
                                 icon: const Icon(Icons.sell_outlined, size: 18),
-                                label: const Text('매각후 봇정지'),
+                                label: const Text('매각 후 봇정지'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -559,7 +617,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: FilledButton.icon(
                                 onPressed: () => _stopBot(afterSell: false),
                                 icon: const Icon(Icons.stop_rounded, size: 18),
-                                label: const Text('현상태 봇정지'),
+                                label: const Text('현 상태 봇정지'),
                               ),
                             ),
                           ],
@@ -581,76 +639,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               PnlChart(
                 dailyPnl: (_status?['daily_pnl'] ?? 0).toDouble(),
                 weeklyPnl: (_status?['weekly_pnl'] ?? 0).toDouble(),
+                monthlyPnl: _monthlyPnl,
+                cumulativePnl: (_status?['total_pnl'] as num?)?.toDouble() ?? 0.0,
               ),
               const SizedBox(height: 20),
               PnlHistoryChart(data: _pnlHistory),
-              const SizedBox(height: 20),
-              Text(
-                '수익 현황',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _StatCard(title: '일일', value: '${_status?['daily_pnl'] ?? 0}%')),
-                  const SizedBox(width: 12),
-                  Expanded(child: _StatCard(title: '주간', value: '${_status?['weekly_pnl'] ?? 0}%')),
-                  const SizedBox(width: 12),
-                  Expanded(child: _StatCard(title: '승률', value: '${_status?['win_rate'] ?? 0}%')),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                '보유 포지션',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              if (_positions.isEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey.shade400),
-                          const SizedBox(height: 12),
-                          Text('보유 포지션이 없습니다', style: TextStyle(color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ..._positions.map((p) => _PositionItem(
-                      coin: p['coin'] ?? '-',
-                      qty: (p['quantity'] ?? 0).toDouble(),
-                      pnl: 0,
-                    )),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        onDestinationSelected: (i) {
-          if (i == 1) context.go('/positions');
-          if (i == 2) context.go('/trades');
-          if (i == 3) context.go('/news');
-          if (i == 4) context.go('/my');
-        },
-        destinations: [
-          NavigationDestination(icon: const Icon(Icons.home), label: ref.watch(appLocalizationsProvider).navDashboard),
-          NavigationDestination(icon: const Icon(Icons.account_balance_wallet), label: ref.watch(appLocalizationsProvider).navPositions),
-          NavigationDestination(icon: const Icon(Icons.list), label: ref.watch(appLocalizationsProvider).navTrades),
-          NavigationDestination(icon: const Icon(Icons.newspaper), label: ref.watch(appLocalizationsProvider).navNews),
-          NavigationDestination(icon: const Icon(Icons.person), label: ref.watch(appLocalizationsProvider).navMy),
-        ],
-      ),
+      // 하단 네비게이션은 app.dart StatefulShellRoute에서 공통 표시
     );
   }
 }
 
-/// 주요 시세용 코인 로고 (UI/UX 스타일: 원형 + 심볼)
+/// 주요 시세용 코인 로고 (작게, 연한 색)
 class _CoinLogo extends StatelessWidget {
   final String symbol;
 
@@ -661,20 +664,21 @@ class _CoinLogo extends StatelessWidget {
     final theme = Theme.of(context);
     final label = symbol.length >= 2 ? symbol.substring(0, 2) : symbol;
     return CircleAvatar(
-      radius: 18,
-      backgroundColor: theme.colorScheme.primaryContainer,
+      radius: 12,
+      backgroundColor: theme.colorScheme.primaryContainer.withOpacity(0.5),
       child: Text(
         label,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.primary.withOpacity(0.85),
+          fontWeight: FontWeight.w600,
+          fontSize: 9,
         ),
       ),
     );
   }
 }
 
+/// 비율(%) 표시용 카드 — 숫자는 가운데 정렬
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -688,6 +692,8 @@ class _StatCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(title, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6))),
             const SizedBox(height: 6),
@@ -699,33 +705,3 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _PositionItem extends StatelessWidget {
-  final String coin;
-  final double qty;
-  final double pnl;
-
-  const _PositionItem({required this.coin, required this.qty, required this.pnl});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = pnl >= 0 ? Colors.green : Colors.red;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(coin.length > 2 ? coin.substring(0, 2).toUpperCase() : coin, style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary)),
-        ),
-        title: Text(coin, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('$qty'),
-        trailing: Text(
-          '${pnl >= 0 ? '+' : ''}$pnl%',
-          style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15),
-        ),
-      ),
-    );
-  }
-}
