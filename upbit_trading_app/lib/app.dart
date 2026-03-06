@@ -9,7 +9,7 @@ import 'presentation/screens/positions_screen.dart';
 import 'presentation/screens/trades_screen.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'presentation/screens/password_change_screen.dart';
-import 'presentation/screens/news_screen.dart';
+import 'presentation/screens/ai_screen.dart';
 import 'presentation/screens/my_screen.dart';
 import 'theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
@@ -88,7 +88,7 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
               index = 1;
             } else if (path.startsWith('/trades')) {
               index = 2;
-            } else if (path.startsWith('/news')) {
+            } else if (path.startsWith('/ai')) {
               index = 3;
             } else if (path.startsWith('/my')) {
               index = 4;
@@ -110,7 +110,7 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
                       context.go('/trades');
                       break;
                     case 3:
-                      context.go('/news');
+                      context.go('/ai');
                       break;
                     case 4:
                       context.go('/my');
@@ -138,7 +138,7 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
               GoRoute(path: '/trades', builder: (_, __) => const TradesScreen()),
             ]),
             StatefulShellBranch(routes: [
-              GoRoute(path: '/news', builder: (_, __) => const NewsScreen()),
+              GoRoute(path: '/ai', builder: (_, __) => const AiScreen()),
             ]),
             StatefulShellBranch(routes: [
               GoRoute(

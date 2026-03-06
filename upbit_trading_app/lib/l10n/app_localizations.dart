@@ -52,6 +52,12 @@ class AppLocalizations {
     'navPositions': {'ko': '포지션', 'en': 'Positions', 'zh': '持仓', 'ja': 'ポジション', 'es': 'Posiciones', 'fr': 'Positions', 'de': 'Positionen', 'pt': 'Posições', 'ru': 'Позиции', 'ar': 'المراكز', 'th': 'ตำแหน่ง', 'vi': 'Vị thế', 'id': 'Posisi', 'hi': 'पोजिशन', 'tr': 'Pozisyonlar'},
     'navTrades': {'ko': '거래내역', 'en': 'Trades', 'zh': '交易记录', 'ja': '取引履歴', 'es': 'Operaciones', 'fr': 'Transactions', 'de': 'Trades', 'pt': 'Negociações', 'ru': 'Сделки', 'ar': 'الصفقات', 'th': 'การซื้อขาย', 'vi': 'Giao dịch', 'id': 'Transaksi', 'hi': 'ट्रेड', 'tr': 'İşlemler'},
     'navNews': {'ko': '뉴스', 'en': 'News', 'zh': '新闻', 'ja': 'ニュース', 'es': 'Noticias', 'fr': 'Actualités', 'de': 'Nachrichten', 'pt': 'Notícias', 'ru': 'Новости', 'ar': 'أخبار', 'th': 'ข่าว', 'vi': 'Tin tức', 'id': 'Berita', 'hi': 'समाचार', 'tr': 'Haberler'},
+    'navAi': {'ko': 'AI', 'en': 'AI', 'zh': 'AI', 'ja': 'AI', 'es': 'AI', 'fr': 'IA', 'de': 'KI', 'pt': 'IA', 'ru': 'ИИ', 'ar': 'ذكاء اصطناعي', 'th': 'AI', 'vi': 'AI', 'id': 'AI', 'hi': 'AI', 'tr': 'AI'},
+    'aiCoinSelectTitle': {'ko': '종목 지정', 'en': 'Coin selection', 'zh': '选择币种', 'ja': '銘柄指定', 'es': 'Selección de monedas', 'fr': 'Sélection des actifs', 'de': 'Coin-Auswahl', 'pt': 'Seleção de moedas', 'ru': 'Выбор монет', 'ar': 'اختيار العملات', 'th': 'เลือกเหรียญ', 'vi': 'Chọn coin', 'id': 'Pilih koin', 'hi': 'सिक्का चयन', 'tr': 'Coin seçimi'},
+    'aiModeAuto': {'ko': '오토', 'en': 'Auto', 'zh': '自动', 'ja': 'オート', 'es': 'Auto', 'fr': 'Auto', 'de': 'Auto', 'pt': 'Auto', 'ru': 'Авто', 'ar': 'تلقائي', 'th': 'อัตโนมัติ', 'vi': 'Tự động', 'id': 'Otomatis', 'hi': 'ऑटो', 'tr': 'Otomatik'},
+    'aiModeManual': {'ko': '수동', 'en': 'Manual', 'zh': '手动', 'ja': '手動', 'es': 'Manual', 'fr': 'Manuel', 'de': 'Manuell', 'pt': 'Manual', 'ru': 'Вручную', 'ar': 'يدوي', 'th': 'มือ', 'vi': 'Thủ công', 'id': 'Manual', 'hi': 'मैन्युअल', 'tr': 'Manuel'},
+    'aiModeHint': {'ko': '오토: 개미엔진이 업비트 전체 종목을 검토해 종목 선정. 수동: 아래에서 최대 10종목까지 선택.', 'en': 'Auto: engine selects from all Upbit KRW markets. Manual: select up to 10 below.', 'zh': '自动：引擎从全部Upbit市场选择。手动：下方最多选10个。', 'ja': 'オート: エンジンが全銘柄を検討。手動: 以下で最大10銘柄選択。', 'es': 'Auto: el motor elige entre todos los mercados. Manual: seleccione hasta 10 abajo.', 'fr': 'Auto: le moteur choisit parmi tous les marchés. Manuel: sélectionnez jusqu\'à 10 ci-dessous.', 'de': 'Auto: Engine wählt aus allen Märkten. Manuell: bis zu 10 unten auswählen.', 'pt': 'Auto: motor escolhe entre todos os mercados. Manual: selecione até 10 abaixo.', 'ru': 'Авто: движок выбирает из всех рынков. Вручную: выберите до 10 ниже.', 'ar': 'تلقائي: المحرك يختار من كل الأسواق. يدوي: اختر حتى 10 أدناه.', 'th': 'อัตโนมัติ: เอ็นจิ้นเลือกจากทุกตลาด. มือ: เลือกได้สูงสุด 10 รายการด้านล่าง.', 'vi': 'Tự động: engine chọn từ tất cả thị trường. Thủ công: chọn tối đa 10 bên dưới.', 'id': 'Otomatis: mesin pilih dari semua pasar. Manual: pilih hingga 10 di bawah.', 'hi': 'ऑटो: इंजन सभी बाजारों से चुनता है। मैन्युअल: नीचे 10 तक चुनें।', 'tr': 'Otomatik: motor tüm piyasalardan seçer. Manuel: aşağıdan en fazla 10 seçin.'},
+    'aiSelectedCount': {'ko': '선택한 종목 (최대 10개)', 'en': 'Selected coins (max 10)', 'zh': '已选币种（最多10个）', 'ja': '選択銘柄（最大10）', 'es': 'Monedas seleccionadas (máx. 10)', 'fr': 'Actifs sélectionnés (max. 10)', 'de': 'Ausgewählte Coins (max. 10)', 'pt': 'Moedas selecionadas (máx. 10)', 'ru': 'Выбранные монеты (макс. 10)', 'ar': 'العملات المختارة (10 كحد أقصى)', 'th': 'เหรียญที่เลือก (สูงสุด 10)', 'vi': 'Coin đã chọn (tối đa 10)', 'id': 'Koin dipilih (maks 10)', 'hi': 'चयनित सिक्के (अधिकतम 10)', 'tr': 'Seçilen coinler (en fazla 10)'},
     'navMy': {'ko': 'My', 'en': 'My', 'zh': '我的', 'ja': 'マイ', 'es': 'Mi', 'fr': 'Mon', 'de': 'Mein', 'pt': 'Meu', 'ru': 'Моё', 'ar': 'خاصتي', 'th': 'ของฉัน', 'vi': 'Của tôi', 'id': 'Saya', 'hi': 'मेरा', 'tr': 'Benim'},
     'myTitle': {'ko': 'My', 'en': 'My', 'zh': '我的', 'ja': 'マイ', 'es': 'Mi cuenta', 'fr': 'Mon compte', 'de': 'Mein Konto', 'pt': 'Minha conta', 'ru': 'Моё', 'ar': 'خاصتي', 'th': 'ของฉัน', 'vi': 'Của tôi', 'id': 'Akun Saya', 'hi': 'मेरा', 'tr': 'Hesabım'},
     'profile': {'ko': '프로필', 'en': 'Profile', 'zh': '个人资料', 'ja': 'プロフィール', 'es': 'Perfil', 'fr': 'Profil', 'de': 'Profil', 'pt': 'Perfil', 'ru': 'Профиль', 'ar': 'الملف الشخصي', 'th': 'โปรไฟล์', 'vi': 'Hồ sơ', 'id': 'Profil', 'hi': 'प्रोफ़ाइल', 'tr': 'Profil'},
@@ -79,6 +85,12 @@ class AppLocalizations {
   String get navPositions => _t(_strings, 'navPositions');
   String get navTrades => _t(_strings, 'navTrades');
   String get navNews => _t(_strings, 'navNews');
+  String get navAi => _t(_strings, 'navAi');
+  String get aiCoinSelectTitle => _t(_strings, 'aiCoinSelectTitle');
+  String get aiModeAuto => _t(_strings, 'aiModeAuto');
+  String get aiModeManual => _t(_strings, 'aiModeManual');
+  String get aiModeHint => _t(_strings, 'aiModeHint');
+  String get aiSelectedCount => _t(_strings, 'aiSelectedCount');
   String get navMy => _t(_strings, 'navMy');
   String get myTitle => _t(_strings, 'myTitle');
   String get profile => _t(_strings, 'profile');

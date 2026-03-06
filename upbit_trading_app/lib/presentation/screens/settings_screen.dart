@@ -32,7 +32,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController _timeStopHoursController;
   late final TextEditingController _apiBaseUrlController;
   late double _investmentRatio;
-  late int _maxPositions;
 
   @override
   void initState() {
@@ -46,7 +45,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _timeStopHoursController = TextEditingController(text: '12');
     _apiBaseUrlController = TextEditingController(text: ApiService.defaultBaseUrl);
     _investmentRatio = 0.5;
-    _maxPositions = 7;
     _fetch();
   }
 
@@ -101,7 +99,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _config = config.isNotEmpty ? config : null;
         _investmentRatio =
             (config['max_investment_ratio'] ?? 0.5).toDouble();
-        _maxPositions = config['max_positions'] ?? 7;
         _stopLossController.text =
             (config['stop_loss_pct'] ?? 2.5).toString();
         _takeProfitController.text =
@@ -427,7 +424,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       await ref.read(apiServiceProvider).updateBotConfig(
             maxInvestmentRatio: _investmentRatio,
-            maxPositions: _maxPositions,
             stopLossPct: stopLoss,
             takeProfitPct: takeProfit,
             takeProfitTier1Pct: tier1,
@@ -723,24 +719,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onChangeEnd: (_) => _saveConfig(),
                     ),
                     const Divider(),
-                    ListTile(
-                      title: const Text('최대 포지션'),
-                      trailing: DropdownButton<int>(
-                        value: _maxPositions,
-                        items: [3, 5, 7, 10].map((v) {
-                          return DropdownMenuItem(
-                            value: v,
-                            child: Text('$v'),
-                          );
-                        }).toList(),
-                        onChanged: (v) {
-                          if (v != null) {
-                            setState(() => _maxPositions = v);
-                            _saveConfig();
-                          }
-                        },
-                      ),
-                    ),
                     ListTile(
                       title: const Text('손절 %'),
                       subtitle: const Text('0~100', style: TextStyle(fontSize: 12)),

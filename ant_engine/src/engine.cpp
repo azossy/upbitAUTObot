@@ -38,20 +38,24 @@ std::string NowUtcIso8601() {
   return os.str();
 }
 
+// UTC 기준 1970-01-01 이후 일수 계산 (윤년 포함).
+static int DaysSinceEpoch(int y, int mo, int d) {
+  if (mo <= 2) { y--; mo += 12; }
+  int k = 365 * y + y / 4 - y / 100 + y / 400;
+  int m = (153 * (mo - 3) + 2) / 5 + 1;
+  return k + m + d - 719468;  // 719468 = 1970-01-01 UTC 기준 일수
+}
+
 // ISO 8601 "YYYY-MM-DDTHH:MM:SSZ" -> time_t (UTC). 실패 시 0.
+// mktime은 로컬 시간으로 해석하므로 UTC 기준으로 직접 계산.
 std::time_t ParseIso8601Utc(const std::string& s) {
-  if (s.size() < 20) return 0;
+  if (s.size() < 19) return 0;
   int y, mo, d, h, mi, sec;
   if (std::sscanf(s.c_str(), "%d-%d-%dT%d:%d:%d", &y, &mo, &d, &h, &mi, &sec) != 6)
     return 0;
-  std::tm t = {};
-  t.tm_year = y - 1900;
-  t.tm_mon = mo - 1;
-  t.tm_mday = d;
-  t.tm_hour = h;
-  t.tm_min = mi;
-  t.tm_sec = sec;
-  return std::mktime(&t);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return 0;
+  int days = DaysSinceEpoch(y, mo, d);
+  return static_cast<std::time_t>(days) * 86400 + h * 3600 + mi * 60 + sec;
 }
 
 nlohmann::json BaseResponse(const SignalRequest& req) {
@@ -118,10 +122,16 @@ bool PassEntryStage1(const SignalRequest& req) {
   return static_cast<int>(req.positions.size()) < req.config.max_positions;
 }
 
-// --- 진입 2차: 골든크로스, 4h 정배열, ADX>=25, 거래량 > 20기간 평균
+// --- 1h 정배열: 단기 EMA > 장기 EMA (골든크로스 직후 구간 포함)
+static bool Is1hBullishAlignment(const IndicatorContext& ctx) {
+  if (ctx.ema_short_1h.empty() || ctx.ema_long_1h.empty()) return false;
+  return ctx.ema_short_1h.back() > ctx.ema_long_1h.back();
+}
+
+// --- 진입 2차: 1h 정배열(단기>장기), 4h 정배열, ADX>=25. 거래량은 3차에서만 사용.
 bool PassEntryStage2(const SignalRequest& req, const IndicatorContext& ctx) {
   if (!ctx.valid_1h) return false;
-  if (!HasGoldenCross(ctx.ema_short_1h, ctx.ema_long_1h)) return false;
+  if (!Is1hBullishAlignment(ctx)) return false;
   if (ctx.valid_4h) {
     if (ctx.ema_long_4h.empty()) {
       if (!Is4hBullishAlignmentPartial(ctx.ema_short_4h, ctx.ema_mid_4h)) return false;
@@ -130,9 +140,6 @@ bool PassEntryStage2(const SignalRequest& req, const IndicatorContext& ctx) {
     }
   }
   if (ctx.adx_1h.empty() || ctx.adx_1h.back() < kAdxEntryThreshold) return false;
-  if (req.candles_1h.empty()) return false;
-  double last_vol = req.candles_1h.back().v;
-  if (ctx.vol_avg_20_1h <= 0 || last_vol <= ctx.vol_avg_20_1h) return false;
   return true;
 }
 
@@ -301,7 +308,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     if (!PassEntryStage2(req, ctx)) {
       resp["signal"] = "hold";
       resp["reason_code"] = "hold_stage2";
-      resp["reason_text"] = "2차 미통과(골든크로스/4h정배열/ADX/거래량)";
+      resp["reason_text"] = "2차 미통과(1h·4h 정배열/ADX)";
       return resp;
     }
     if (PassEntryStage3A(req, ctx)) {

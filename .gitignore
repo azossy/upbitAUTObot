@@ -72,3 +72,8 @@ upbit-trading-system/
 # Pretendard 폰트 다운로드 임시 (실제 폰트는 assets/fonts에 복사됨)
 upbit_trading_app/PretendardStd.zip
 upbit_trading_app/pretendard_extract/
+
+# 백테스트·시뮬레이션 테스트 산출물 (자체 실행용, GitHub에는 docs 시뮬레이션 보고서만 올림)
+backend/backtest_data.json
+backend/backtest_data_KRW-*.json
+backend/backtest_results/

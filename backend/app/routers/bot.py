@@ -136,6 +136,8 @@ async def get_config(
         "take_profit_tier3_pct": config.get("take_profit_tier3_pct", 15.0),
         "time_stop_hours": config.get("time_stop_hours", 12),
         "telegram_chat_id": user.telegram_chat_id or "",
+        "coin_select_mode": config.get("coin_select_mode", "auto"),
+        "selected_markets": config.get("selected_markets", []),
     }
 
 
@@ -165,6 +167,10 @@ async def update_config(
         config["time_stop_hours"] = req.time_stop_hours
     if req.telegram_chat_id is not None:
         user.telegram_chat_id = req.telegram_chat_id.strip() or None
+    if req.coin_select_mode is not None:
+        config["coin_select_mode"] = req.coin_select_mode if req.coin_select_mode in ("auto", "manual") else "auto"
+    if req.selected_markets is not None:
+        config["selected_markets"] = [m.strip() for m in req.selected_markets if m and str(m).strip()][:10]
     bot.config = config
     attributes.flag_modified(bot, "config")
     await db.commit()

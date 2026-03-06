@@ -346,6 +346,8 @@ class ApiService {
     double? takeProfitTier3Pct,
     int? timeStopHours,
     String? telegramChatId,
+    String? coinSelectMode,
+    List<String>? selectedMarkets,
   }) async {
     final data = <String, dynamic>{};
     if (maxInvestmentRatio != null) data['max_investment_ratio'] = maxInvestmentRatio;
@@ -357,7 +359,16 @@ class ApiService {
     if (takeProfitTier3Pct != null) data['take_profit_tier3_pct'] = takeProfitTier3Pct;
     if (timeStopHours != null) data['time_stop_hours'] = timeStopHours;
     if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
+    if (coinSelectMode != null) data['coin_select_mode'] = coinSelectMode;
+    if (selectedMarkets != null) data['selected_markets'] = selectedMarkets;
     await _dio.put('/api/v1/bot/config', data: data);
+  }
+
+  /// 업비트 원화(KRW) 마켓 목록. AI 화면 수동 종목 선택용.
+  Future<List<Map<String, dynamic>>> getKrwMarkets() async {
+    final res = await _dio.get('/api/v1/market/krw-markets');
+    final list = res.data as List<dynamic>? ?? [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   /// 비밀번호 변경 (JWT 필요)

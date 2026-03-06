@@ -71,11 +71,15 @@ int main(int argc, char* argv[]) {
     res.set_content(resp.dump(), "application/json");
   });
 
-  std::string addr = "0.0.0.0:" + std::to_string(port);
+  const char* host = "0.0.0.0";
+#ifdef _WIN32
+  host = "127.0.0.1";  /* Windows에서 0.0.0.0 바인드 실패 시 로컬호스트로 */
+#endif
+  std::string addr = std::string(host) + ":" + std::to_string(port);
   Log(std::string("[AntEngine ") + ant_engine::kEngineVersion +
       "] schema " + ant_engine::kSchemaVersion + " — listening on " + addr);
 
-  if (!svr.listen("0.0.0.0", static_cast<int>(port))) {
+  if (!svr.listen(host, static_cast<int>(port))) {
     std::cerr << "Listen failed." << std::endl;
     return 1;
   }

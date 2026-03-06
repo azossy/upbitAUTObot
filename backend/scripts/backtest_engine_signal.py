@@ -69,6 +69,7 @@ def build_request(
     market: str = "KRW-BTC",
     positions: list[dict] | None = None,
     market_regime: str = "up",
+    market_score: float = 0.0,
 ) -> dict:
     """입출력 가이드 §2 형식의 시그널 요청 body."""
     return {
@@ -93,7 +94,7 @@ def build_request(
             "event_window_active": False,
         },
         "market_regime": market_regime,
-        "market_score": 0,
+        "market_score": market_score,
     }
 
 

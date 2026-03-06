@@ -1,6 +1,6 @@
 """인증/봇 스키마"""
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 # 비밀번호 최소 길이 (상용 프로그램 수준)
@@ -112,6 +112,8 @@ class BotConfigRequest(BaseModel):
     take_profit_tier3_pct: Optional[float] = Field(None, ge=0, le=100, description="분할 익절 3단계 %")
     time_stop_hours: Optional[int] = Field(None, ge=1, le=168, description="시간 손절(시간, 1~168)")
     telegram_chat_id: Optional[str] = None
+    coin_select_mode: Optional[str] = Field(None, description="auto | manual")
+    selected_markets: Optional[List[str]] = Field(None, description="수동 모드 시 종목 코드 목록, 최대 10개")
 
 
 class BotStatusResponse(BaseModel):

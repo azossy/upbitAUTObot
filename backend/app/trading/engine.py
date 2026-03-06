@@ -3,7 +3,35 @@
 - 검증 모드: 실제 주문 없이 잔고 조회(get_accounts)만 수행. 로그에 "업비트 API 연동 확인" 기록.
 - 봇 정지 시 asyncio 태스크 취소, 정상 종료. 미체결 주문 취소는 실제 주문 로직 도입 후 적용.
 - 실제 매매는 추후 전략·주문 로직 이식 후 동작하며, 사용자 책임으로 안내합니다.
+- 종목: Bot.config["coin_select_mode"] (auto|manual), Bot.config["selected_markets"] (수동 시 최대 10종목).
+- 분산 매수: 매수 신호가 여러 종목일 때 상승 가능성(엔진 점수 또는 동일 비중) 비율로 투자금 분배.
 """
+
+
+def allocate_krw_by_scores(
+    total_krw: float,
+    market_scores: list[tuple[str, float]],
+    min_per_market: float = 5000.0,
+) -> dict[str, float]:
+    """
+    여러 종목에 투자금을 점수 비율로 분배. (상승 가능성 백분율에 따른 분산 매수)
+    market_scores: [(market, score), ...], score는 0 이상. 0이면 해당 종목 제외.
+    반환: { market: krw_amount, ... }
+    """
+    if not market_scores or total_krw < min_per_market:
+        return {}
+    eligible = [(m, max(0.0, s)) for m, s in market_scores if max(0.0, s) > 0]
+    if not eligible:
+        return {}
+    total_score = sum(s for _, s in eligible)
+    if total_score <= 0:
+        return {}
+    out = {}
+    for market, score in eligible:
+        krw = total_krw * (score / total_score)
+        if krw >= min_per_market:
+            out[market] = round(krw, 0)
+    return out
 
 import asyncio
 from loguru import logger
