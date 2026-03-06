@@ -131,6 +131,10 @@ async def get_config(
         "max_positions": config.get("max_positions", 7),
         "stop_loss_pct": config.get("stop_loss_pct", 2.5),
         "take_profit_pct": config.get("take_profit_pct", 7.0),
+        "take_profit_tier1_pct": config.get("take_profit_tier1_pct", 5.0),
+        "take_profit_tier2_pct": config.get("take_profit_tier2_pct", 10.0),
+        "take_profit_tier3_pct": config.get("take_profit_tier3_pct", 15.0),
+        "time_stop_hours": config.get("time_stop_hours", 12),
         "telegram_chat_id": user.telegram_chat_id or "",
     }
 
@@ -151,6 +155,14 @@ async def update_config(
         config["stop_loss_pct"] = req.stop_loss_pct
     if req.take_profit_pct is not None:
         config["take_profit_pct"] = req.take_profit_pct
+    if req.take_profit_tier1_pct is not None:
+        config["take_profit_tier1_pct"] = req.take_profit_tier1_pct
+    if req.take_profit_tier2_pct is not None:
+        config["take_profit_tier2_pct"] = req.take_profit_tier2_pct
+    if req.take_profit_tier3_pct is not None:
+        config["take_profit_tier3_pct"] = req.take_profit_tier3_pct
+    if req.time_stop_hours is not None:
+        config["time_stop_hours"] = req.time_stop_hours
     if req.telegram_chat_id is not None:
         user.telegram_chat_id = req.telegram_chat_id.strip() or None
     bot.config = config

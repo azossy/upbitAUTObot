@@ -26,6 +26,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController _telegramController;
   late final TextEditingController _stopLossController;
   late final TextEditingController _takeProfitController;
+  late final TextEditingController _takeProfitTier1Controller;
+  late final TextEditingController _takeProfitTier2Controller;
+  late final TextEditingController _takeProfitTier3Controller;
+  late final TextEditingController _timeStopHoursController;
   late final TextEditingController _apiBaseUrlController;
   late double _investmentRatio;
   late int _maxPositions;
@@ -36,6 +40,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _telegramController = TextEditingController();
     _stopLossController = TextEditingController(text: '2.5');
     _takeProfitController = TextEditingController(text: '7.0');
+    _takeProfitTier1Controller = TextEditingController(text: '5.0');
+    _takeProfitTier2Controller = TextEditingController(text: '10.0');
+    _takeProfitTier3Controller = TextEditingController(text: '15.0');
+    _timeStopHoursController = TextEditingController(text: '12');
     _apiBaseUrlController = TextEditingController(text: ApiService.defaultBaseUrl);
     _investmentRatio = 0.5;
     _maxPositions = 7;
@@ -47,6 +55,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _telegramController.dispose();
     _stopLossController.dispose();
     _takeProfitController.dispose();
+    _takeProfitTier1Controller.dispose();
+    _takeProfitTier2Controller.dispose();
+    _takeProfitTier3Controller.dispose();
+    _timeStopHoursController.dispose();
     _apiBaseUrlController.dispose();
     super.dispose();
   }
@@ -94,6 +106,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             (config['stop_loss_pct'] ?? 2.5).toString();
         _takeProfitController.text =
             (config['take_profit_pct'] ?? 7.0).toString();
+        _takeProfitTier1Controller.text =
+            (config['take_profit_tier1_pct'] ?? 5.0).toString();
+        _takeProfitTier2Controller.text =
+            (config['take_profit_tier2_pct'] ?? 10.0).toString();
+        _takeProfitTier3Controller.text =
+            (config['take_profit_tier3_pct'] ?? 15.0).toString();
+        _timeStopHoursController.text =
+            (config['time_stop_hours'] ?? 12).toString();
         _telegramController.text =
             config['telegram_chat_id']?.toString() ?? '';
         _error = keys.isEmpty && config.isEmpty ? '데이터 로드 실패' : null;
@@ -183,23 +203,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _showAddApiKeyDialog() async {
+    final isUpdate = _apiKeys.isNotEmpty;
     final accessController = TextEditingController();
     final secretController = TextEditingController();
-    final labelController = TextEditingController(text: '메인계정');
+    final labelController = TextEditingController(
+      text: isUpdate && _apiKeys.isNotEmpty ? (_apiKeys.first['label'] ?? '메인계정').toString() : '메인계정',
+    );
     bool obscureSecret = true;
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('API 키 추가'),
+          title: Text(isUpdate ? 'API 키 변경' : 'API 키 등록'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '업비트 API 키는 1개만 등록할 수 있습니다. 이미 등록된 키가 있으면 삭제 후 다시 등록하세요.',
+                  isUpdate
+                      ? '기존 키가 새 키로 교체됩니다. Access Key와 Secret Key를 입력하세요.'
+                      : '업비트 API 키는 1개만 등록할 수 있습니다. 봇이 주문 실행에 사용합니다.',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
                 ),
                 const SizedBox(height: 12),
@@ -244,7 +269,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('추가'),
+              child: Text(isUpdate ? '변경' : '등록'),
             ),
           ],
         ),
@@ -253,6 +278,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (ok == true && mounted) {
       try {
+        if (_apiKeys.isNotEmpty) {
+          final first = _apiKeys.first;
+          await ref.read(apiServiceProvider).deleteApiKey(first['id'] as int);
+        }
         await ref.read(apiServiceProvider).addApiKey(
               accessController.text.trim(),
               secretController.text.trim(),
@@ -262,9 +291,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('API 키가 등록되었습니다'),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: Text(_apiKeys.isEmpty ? 'API 키가 등록되었습니다.' : 'API 키가 변경되었습니다.'),
+              duration: const Duration(seconds: 3),
             ),
           );
           _fetch();
@@ -279,6 +308,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
         }
       }
+    }
+  }
+
+  Future<void> _showTelegramDialog() async {
+    final controller = TextEditingController(text: _telegramController.text.trim());
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('텔레그램 Chat ID'),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Chat ID',
+              hintText: '숫자로 된 Chat ID 입력',
+              helperText: '텔레그램 봇에게 /start 후 표시되는 Chat ID를 입력하세요.',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      _telegramController.text = controller.text.trim();
+      await _saveConfig();
+      if (mounted) setState(() {});
     }
   }
 
@@ -330,11 +397,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveConfig() async {
     final stopLoss = double.tryParse(_stopLossController.text) ?? 2.5;
     final takeProfit = double.tryParse(_takeProfitController.text) ?? 7.0;
-      if (stopLoss < 0 || stopLoss > 100 || takeProfit < 0 || takeProfit > 100) {
+    final tier1 = double.tryParse(_takeProfitTier1Controller.text) ?? 5.0;
+    final tier2 = double.tryParse(_takeProfitTier2Controller.text) ?? 10.0;
+    final tier3 = double.tryParse(_takeProfitTier3Controller.text) ?? 15.0;
+    final timeStopHours = int.tryParse(_timeStopHoursController.text) ?? 12;
+    if (stopLoss < 0 || stopLoss > 100 || takeProfit < 0 || takeProfit > 100 ||
+        tier1 < 0 || tier1 > 100 || tier2 < 0 || tier2 > 100 || tier3 < 0 || tier3 > 100) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('손절 %·익절 %는 0~100 사이로 입력하세요.'),
+            content: Text('손절·익절 %는 0~100 사이로 입력하세요.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+    if (timeStopHours < 1 || timeStopHours > 168) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('시간 손절은 1~168(시간) 사이로 입력하세요.'),
             duration: Duration(seconds: 4),
           ),
         );
@@ -347,6 +430,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             maxPositions: _maxPositions,
             stopLossPct: stopLoss,
             takeProfitPct: takeProfit,
+            takeProfitTier1Pct: tier1,
+            takeProfitTier2Pct: tier2,
+            takeProfitTier3Pct: tier3,
+            timeStopHours: timeStopHours,
             telegramChatId: _telegramController.text.trim(),
           );
       if (mounted) {
@@ -508,6 +595,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            // API 키 등록 (텔레그램 바로 위, API 서버 주소와 동일 UX)
+            Text(
+              'API 키 등록',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '업비트 API 키를 등록하면 자동매매 봇이 주문을 실행할 수 있습니다. 1개만 등록 가능합니다.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                title: Text(
+                  _apiKeys.isEmpty
+                      ? '미등록'
+                      : '${(_apiKeys.first['label'] ?? '기본').toString()} · ${(_apiKeys.first['masked_key'] ?? '••••••••').toString()}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: FilledButton.tonal(
+                  onPressed: _showAddApiKeyDialog,
+                  child: Text(_apiKeys.isEmpty ? '등록' : '변경'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // 텔레그램 연동 (안내 + 현재값 + 등록/변경)
+            Text(
+              '텔레그램 연동',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '텔레그램 봇으로 매매 알림을 받을 수 있습니다. 봇에게 /start 후 표시되는 Chat ID를 입력하세요.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                title: Text(
+                  _telegramController.text.trim().isEmpty ? '미등록' : _telegramController.text.trim(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: FilledButton.tonal(
+                  onPressed: _showTelegramDialog,
+                  child: Text(_telegramController.text.trim().isEmpty ? '등록' : '변경'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             if (_error != null) ...[
               Material(
                 color: Colors.transparent,
@@ -545,37 +686,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            Text(
-              'API 키 관리',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            ..._apiKeys.map((k) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(Icons.key, color: Theme.of(context).colorScheme.primary, size: 20),
-                    ),
-                    title: Text(k['label'] ?? '기본', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(k['masked_key'] ?? '••••••••', style: Theme.of(context).textTheme.bodySmall),
-                    trailing: TextButton(
-                      onPressed: () => _deleteApiKey(
-                        k['id'] as int,
-                        k['label'] ?? '기본',
-                      ),
-                      child: const Text('삭제'),
-                    ),
-                  ),
-                )),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _showAddApiKeyDialog,
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('API 키 추가'),
-            ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             // 자동매매 책임 안내 (디스클레이머) — 매매 설정 위
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -647,7 +758,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     ListTile(
-                      title: const Text('익절 %'),
+                      title: const Text('익절 % (전량)'),
                       subtitle: const Text('0~100', style: TextStyle(fontSize: 12)),
                       trailing: SizedBox(
                         width: 80,
@@ -662,26 +773,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                     ),
+                    const Divider(),
+                    ListTile(
+                      title: const Text('분할 익절 1단계 %'),
+                      subtitle: const Text('예: +5% 구간 일부 청산', style: TextStyle(fontSize: 12)),
+                      trailing: SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _takeProfitTier1Controller,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _saveConfig(),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('분할 익절 2단계 %'),
+                      subtitle: const Text('예: +10% 구간', style: TextStyle(fontSize: 12)),
+                      trailing: SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _takeProfitTier2Controller,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _saveConfig(),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('분할 익절 3단계 %'),
+                      subtitle: const Text('예: +15% 구간', style: TextStyle(fontSize: 12)),
+                      trailing: SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _takeProfitTier3Controller,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _saveConfig(),
+                        ),
+                      ),
+                    ),
+                    const Divider(),
+                    ListTile(
+                      title: const Text('시간 손절 (시간)'),
+                      subtitle: const Text('진입 후 N시간 경과 시 조건 만족하면 청산 (1~168)', style: TextStyle(fontSize: 12)),
+                      trailing: SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _timeStopHoursController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _saveConfig(),
+                        ),
+                      ),
+                    ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              '텔레그램 연동',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextField(
-                  controller: _telegramController,
-                  decoration: const InputDecoration(
-                    labelText: 'Chat ID',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _saveConfig(),
                 ),
               ),
             ),

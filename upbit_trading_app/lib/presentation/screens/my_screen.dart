@@ -100,6 +100,114 @@ class _MyScreenState extends ConsumerState<MyScreen> {
     } catch (_) {}
   }
 
+  void _showProfileEditSheet(BuildContext context, ThemeData theme) {
+    final l10n = ref.read(appLocalizationsProvider);
+    final nicknameEdit = TextEditingController(text: _nicknameController.text);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '프로필 수정',
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildAvatar(theme),
+                      if (_uploadingAvatar)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.black45,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: _uploadingAvatar ? null : () => _pickAndUploadAvatar(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt, size: 20),
+                      label: Text(l10n.photoCamera),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: _uploadingAvatar ? null : () => _pickAndUploadAvatar(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library, size: 20),
+                      label: Text(l10n.photoAlbum),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nicknameEdit,
+                  decoration: InputDecoration(
+                    labelText: l10n.nickname,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  key: ValueKey(_profile?['email']),
+                  initialValue: _profile?['email']?.toString() ?? '',
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: '${l10n.email} (참고용)',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    filled: true,
+                    helperText: '이메일은 변경할 수 없습니다.',
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () async {
+                          _nicknameController.text = nicknameEdit.text.trim();
+                          Navigator.pop(ctx);
+                          await _saveProfile();
+                        },
+                        child: Text(l10n.save),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) => nicknameEdit.dispose());
+  }
+
   Future<void> _pickAndUploadAvatar(ImageSource source) async {
     try {
       final picker = ImagePicker();
@@ -201,26 +309,28 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              // 프로필
+              // 프로필 (사진 + 연필·수정 탭 시 편집 시트)
               Text(
                 l10n.profile,
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                    child: Column(
-                    children: [
-                      Center(
-                        child: Stack(
+                child: InkWell(
+                  onTap: () => _showProfileEditSheet(context, theme),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Stack(
                           clipBehavior: Clip.none,
                           children: [
                             _buildAvatar(theme),
                             if (_uploadingAvatar)
                               Positioned.fill(
                                 child: Container(
-                                    decoration: const BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: Colors.black45,
                                     shape: BoxShape.circle,
                                   ),
@@ -229,55 +339,18 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                               ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FilledButton.tonalIcon(
-                            onPressed: _uploadingAvatar ? null : () => _pickAndUploadAvatar(ImageSource.camera),
-                            icon: const Icon(Icons.camera_alt, size: 20),
-                            label: Text(l10n.photoCamera),
+                        const SizedBox(width: 16),
+                        Icon(Icons.edit_outlined, size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          '수정',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(width: 12),
-                          FilledButton.tonalIcon(
-                            onPressed: _uploadingAvatar ? null : () => _pickAndUploadAvatar(ImageSource.gallery),
-                            icon: const Icon(Icons.photo_library, size: 20),
-                            label: Text(l10n.photoAlbum),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _nicknameController,
-                        decoration: InputDecoration(
-                          labelText: l10n.nickname,
-                          border: const OutlineInputBorder(),
-                          isDense: true,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: ValueKey(_profile?['email']),
-                        initialValue: _profile?['email']?.toString() ?? '',
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: l10n.email,
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                          filled: true,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _saveProfile,
-                          icon: const Icon(Icons.save, size: 20),
-                          label: Text(l10n.save),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

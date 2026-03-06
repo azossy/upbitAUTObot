@@ -299,14 +299,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final l10n = ref.watch(appLocalizationsProvider);
     return Scaffold(
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Center(child: _buildProfileLeading(context)),
+        leading: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: _buildProfileLeading(context),
+          ),
         ),
-        leadingWidth: 180,
+        leadingWidth: 160,
         centerTitle: true,
         title: Text(l10n.navDashboard),
         actions: [
+          const SizedBox(width: 112),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: l10n.logout,
@@ -499,67 +503,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // 주요 시세 (실시간 ticker, 60초 주기 갱신)
-              Text(
-                '주요 시세',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: _tickerData.isEmpty
-                      ? Text(
-                          '—',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-                        )
-                      : Column(
-                          children: _tickerData.map((t) {
-                            final market = t['market'] as String? ?? '-';
-                            final symbol = market.replaceFirst('KRW-', '');
-                            final price = (t['trade_price'] as num?)?.toDouble() ?? 0.0;
-                            final rate = (t['signed_change_rate'] as num?)?.toDouble() ?? 0.0;
-                            final change = t['change'] as String?;
-                            final isRise = change == 'RISE';
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      _CoinLogo(symbol: symbol),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        symbol,
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '${formatKrw(price)}원',
-                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                                      ),
-                                      Text(
-                                        '${rate >= 0 ? '+' : ''}${(rate * 100).toStringAsFixed(2)}%',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isRise ? Colors.green : (rate < 0 ? Colors.red : Theme.of(context).colorScheme.onSurface),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 16),
               // 자동매매 책임 안내 (디스클레이머)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -571,6 +514,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
               ),
+              // 봇 상태 및 시작/정지 버튼 (주요 시세보다 위에)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -633,6 +577,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 주요 시세 (봇 버튼 아래로 이동)
+              Text(
+                '주요 시세',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: _tickerData.isEmpty
+                      ? Text(
+                          '—',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                        )
+                      : Column(
+                          children: _tickerData.map((t) {
+                            final market = t['market'] as String? ?? '-';
+                            final symbol = market.replaceFirst('KRW-', '');
+                            final price = (t['trade_price'] as num?)?.toDouble() ?? 0.0;
+                            final rate = (t['signed_change_rate'] as num?)?.toDouble() ?? 0.0;
+                            final change = t['change'] as String?;
+                            final isRise = change == 'RISE';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      _CoinLogo(symbol: symbol),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        symbol,
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${formatKrw(price)}원',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                                      ),
+                                      Text(
+                                        '${rate >= 0 ? '+' : ''}${(rate * 100).toStringAsFixed(2)}%',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isRise ? Colors.green : (rate < 0 ? Colors.red : Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

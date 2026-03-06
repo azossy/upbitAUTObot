@@ -107,6 +107,10 @@ class BotConfigRequest(BaseModel):
     max_positions: Optional[int] = Field(None, ge=1, le=20, description="1~20")
     stop_loss_pct: Optional[float] = Field(None, ge=0, le=100, description="0~100%")
     take_profit_pct: Optional[float] = Field(None, ge=0, le=100, description="0~100%")
+    take_profit_tier1_pct: Optional[float] = Field(None, ge=0, le=100, description="분할 익절 1단계 %")
+    take_profit_tier2_pct: Optional[float] = Field(None, ge=0, le=100, description="분할 익절 2단계 %")
+    take_profit_tier3_pct: Optional[float] = Field(None, ge=0, le=100, description="분할 익절 3단계 %")
+    time_stop_hours: Optional[int] = Field(None, ge=1, le=168, description="시간 손절(시간, 1~168)")
     telegram_chat_id: Optional[str] = None
 
 

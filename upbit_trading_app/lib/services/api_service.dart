@@ -341,6 +341,10 @@ class ApiService {
     int? maxPositions,
     double? stopLossPct,
     double? takeProfitPct,
+    double? takeProfitTier1Pct,
+    double? takeProfitTier2Pct,
+    double? takeProfitTier3Pct,
+    int? timeStopHours,
     String? telegramChatId,
   }) async {
     final data = <String, dynamic>{};
@@ -348,6 +352,10 @@ class ApiService {
     if (maxPositions != null) data['max_positions'] = maxPositions;
     if (stopLossPct != null) data['stop_loss_pct'] = stopLossPct;
     if (takeProfitPct != null) data['take_profit_pct'] = takeProfitPct;
+    if (takeProfitTier1Pct != null) data['take_profit_tier1_pct'] = takeProfitTier1Pct;
+    if (takeProfitTier2Pct != null) data['take_profit_tier2_pct'] = takeProfitTier2Pct;
+    if (takeProfitTier3Pct != null) data['take_profit_tier3_pct'] = takeProfitTier3Pct;
+    if (timeStopHours != null) data['time_stop_hours'] = timeStopHours;
     if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
     await _dio.put('/api/v1/bot/config', data: data);
   }

@@ -1,13 +1,34 @@
 #include "ant_engine/engine.hpp"
+#include "ant_engine/indicators.hpp"
 #include "ant_engine/types.hpp"
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <cstdlib>
+#include <ctime>
 
 namespace ant_engine {
 
 namespace {
+
+constexpr int kEmaShort = 12;
+constexpr int kEmaLong = 26;
+constexpr int kEmaMid4h = 20;
+constexpr int kEmaLong4h = 50;
+constexpr int kAdxPeriod = 14;
+constexpr int kRsiPeriod = 14;
+constexpr int kVolumePeriod = 20;
+constexpr int kMinCandles1h = 26;
+constexpr int kMinCandles4h = 50;
+constexpr double kAdxEntryThreshold = 25.0;
+constexpr double kAdxStrongTrend = 35.0;
+constexpr double kAdx4hStrong = 30.0;
+constexpr double kRsiPullbackMax = 50.0;
+constexpr double kMarketScoreStrong = 8.0;
+constexpr double kEmaTolerancePct = 0.01;
+constexpr double kTimeStopPnlMin = -0.5;
+constexpr double kTimeStopPnlMax = 1.5;
 
 std::string NowUtcIso8601() {
   auto now = std::chrono::system_clock::now();
@@ -15,6 +36,22 @@ std::string NowUtcIso8601() {
   std::ostringstream os;
   os << std::put_time(std::gmtime(&time), "%Y-%m-%dT%H:%M:%SZ");
   return os.str();
+}
+
+// ISO 8601 "YYYY-MM-DDTHH:MM:SSZ" -> time_t (UTC). 실패 시 0.
+std::time_t ParseIso8601Utc(const std::string& s) {
+  if (s.size() < 20) return 0;
+  int y, mo, d, h, mi, sec;
+  if (std::sscanf(s.c_str(), "%d-%d-%dT%d:%d:%d", &y, &mo, &d, &h, &mi, &sec) != 6)
+    return 0;
+  std::tm t = {};
+  t.tm_year = y - 1900;
+  t.tm_mon = mo - 1;
+  t.tm_mday = d;
+  t.tm_hour = h;
+  t.tm_min = mi;
+  t.tm_sec = sec;
+  return std::mktime(&t);
 }
 
 nlohmann::json BaseResponse(const SignalRequest& req) {
@@ -43,6 +80,108 @@ void SetError(nlohmann::json& j, const std::string& code, const std::string& msg
   j.erase("metadata");
 }
 
+// --- 지표 단계: 1h/4h 캔들로부터 지표 계산
+struct IndicatorContext {
+  std::vector<double> ema_short_1h, ema_long_1h;
+  std::vector<double> ema_short_4h, ema_mid_4h, ema_long_4h;
+  std::vector<double> adx_1h, adx_4h;
+  std::vector<double> rsi_1h;
+  double vol_avg_20_1h = 0;
+  bool valid_1h = false;
+  bool valid_4h = false;
+};
+
+IndicatorContext ComputeIndicators(const SignalRequest& req) {
+  IndicatorContext ctx;
+  if (req.candles_1h.size() >= static_cast<size_t>(kMinCandles1h)) {
+    ctx.ema_short_1h = ComputeEMA(req.candles_1h, kEmaShort);
+    ctx.ema_long_1h = ComputeEMA(req.candles_1h, kEmaLong);
+    ctx.adx_1h = ComputeADX(req.candles_1h, kAdxPeriod);
+    ctx.rsi_1h = ComputeRSI(req.candles_1h, kRsiPeriod);
+    ctx.vol_avg_20_1h = VolumeAverage(req.candles_1h, kVolumePeriod);
+    ctx.valid_1h = true;
+  }
+  if (req.candles_4h.size() >= static_cast<size_t>(kEmaLong)) {
+    ctx.ema_short_4h = ComputeEMA(req.candles_4h, kEmaShort);
+    ctx.ema_mid_4h = ComputeEMA(req.candles_4h, kEmaMid4h);
+    ctx.adx_4h = ComputeADX(req.candles_4h, kAdxPeriod);
+    ctx.valid_4h = true;
+    if (req.candles_4h.size() >= static_cast<size_t>(kMinCandles4h))
+      ctx.ema_long_4h = ComputeEMA(req.candles_4h, kEmaLong4h);
+  }
+  return ctx;
+}
+
+// --- 진입 1차: 시장 국면 상승 + 슬롯 존재
+bool PassEntryStage1(const SignalRequest& req) {
+  if (req.market_regime == "down" || req.market_regime == "sideways") return false;
+  return static_cast<int>(req.positions.size()) < req.config.max_positions;
+}
+
+// --- 진입 2차: 골든크로스, 4h 정배열, ADX>=25, 거래량 > 20기간 평균
+bool PassEntryStage2(const SignalRequest& req, const IndicatorContext& ctx) {
+  if (!ctx.valid_1h) return false;
+  if (!HasGoldenCross(ctx.ema_short_1h, ctx.ema_long_1h)) return false;
+  if (ctx.valid_4h) {
+    if (ctx.ema_long_4h.empty()) {
+      if (!Is4hBullishAlignmentPartial(ctx.ema_short_4h, ctx.ema_mid_4h)) return false;
+    } else {
+      if (!Is4hBullishAlignment(ctx.ema_short_4h, ctx.ema_mid_4h, ctx.ema_long_4h)) return false;
+    }
+  }
+  if (ctx.adx_1h.empty() || ctx.adx_1h.back() < kAdxEntryThreshold) return false;
+  if (req.candles_1h.empty()) return false;
+  double last_vol = req.candles_1h.back().v;
+  if (ctx.vol_avg_20_1h <= 0 || last_vol <= ctx.vol_avg_20_1h) return false;
+  return true;
+}
+
+// --- 진입 3차 A안: 눌림목 — 가격이 단기 EMA 근처, RSI<=50, 거래량<=평균
+bool PassEntryStage3A(const SignalRequest& req, const IndicatorContext& ctx) {
+  if (!ctx.valid_1h || ctx.ema_short_1h.empty() || ctx.rsi_1h.empty()) return false;
+  double ema_s = ctx.ema_short_1h.back();
+  if (ema_s <= 0) return false;
+  double tol = ema_s * kEmaTolerancePct;
+  if (req.current_price < ema_s - tol || req.current_price > ema_s + tol) return false;
+  if (ctx.rsi_1h.back() > kRsiPullbackMax) return false;
+  if (ctx.vol_avg_20_1h <= 0 || req.candles_1h.back().v > ctx.vol_avg_20_1h) return false;
+  return true;
+}
+
+// --- 진입 3차 B안: 강한 추세 — 시장점수>=8, ADX 1h>=35, 4h ADX>=30
+bool PassEntryStage3B(const SignalRequest& req, const IndicatorContext& ctx) {
+  if (req.market_score < kMarketScoreStrong) return false;
+  if (!ctx.valid_1h || ctx.adx_1h.empty() || ctx.adx_1h.back() < kAdxStrongTrend) return false;
+  if (!ctx.valid_4h || ctx.adx_4h.empty() || ctx.adx_4h.back() < kAdx4hStrong) return false;
+  return true;
+}
+
+// --- 매각 1순위: 국면 하락 전환
+bool ExitRank1RegimeDown(const SignalRequest& req) {
+  return req.market_regime == "down";
+}
+
+// --- 매각 3순위: 데드크로스 + ADX<25 (2차 확인)
+bool ExitRank3DeadCross(const IndicatorContext& ctx) {
+  if (!ctx.valid_1h) return false;
+  if (!HasDeadCross(ctx.ema_short_1h, ctx.ema_long_1h)) return false;
+  return !ctx.adx_1h.empty() && ctx.adx_1h.back() < kAdxEntryThreshold;
+}
+
+// --- 매각 7순위: 시간 손절 — 12시간 경과 + 수익률 -0.5%~+1.5% + 국면/ADX 약화
+bool ExitRank7TimeStop(const SignalRequest& req, const Position& pos, const IndicatorContext& ctx) {
+  if (pos.entry_timestamp_utc.empty()) return false;
+  std::time_t entry_t = ParseIso8601Utc(pos.entry_timestamp_utc);
+  std::time_t now_t = ParseIso8601Utc(req.timestamp_utc);
+  if (entry_t == 0 || now_t == 0) return false;
+  const int hours = req.config.time_stop_hours > 0 ? req.config.time_stop_hours : 12;
+  if (now_t - entry_t < hours * 3600) return false;
+  double pnl_pct = (req.current_price - pos.avg_entry_price) / pos.avg_entry_price * 100.0;
+  if (pnl_pct < kTimeStopPnlMin || pnl_pct > kTimeStopPnlMax) return false;
+  if (!ctx.adx_1h.empty() && ctx.adx_1h.back() > 20.0) return false;
+  return true;
+}
+
 }  // namespace
 
 nlohmann::json Evaluate(const SignalRequest& req) {
@@ -57,7 +196,6 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     return resp;
   }
 
-  // v0.9: 이벤트 창 활성 시 진입 보류
   if (req.config.event_window_active && (req.mode == "entry" || req.mode == "both")) {
     resp["signal"] = "hold";
     resp["reason_code"] = "hold_event_window";
@@ -65,16 +203,69 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     return resp;
   }
 
-  // v0.9: 보유 포지션 있으면 매각 판단(손절/익절)
+  IndicatorContext ctx;
+  if (req.mode == "exit" || req.mode == "both")
+    ctx = ComputeIndicators(req);
+
+  // ---------- 매각 판단 (1~7순위)
   if (!req.positions.empty() && (req.mode == "exit" || req.mode == "both")) {
     for (const auto& pos : req.positions) {
       if (pos.market != req.market) continue;
       if (pos.avg_entry_price <= 0) continue;
       double pnl_pct = (req.current_price - pos.avg_entry_price) / pos.avg_entry_price * 100.0;
+
+      if (ExitRank1RegimeDown(req)) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_market_downturn";
+        resp["reason_text"] = "국면 하락 전환";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity;
+        return resp;
+      }
       if (pnl_pct <= -req.config.stop_loss_pct) {
         resp["signal"] = "sell";
         resp["reason_code"] = "exit_stop_loss";
         resp["reason_text"] = "손절 조건 충족";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity;
+        return resp;
+      }
+      if (ExitRank3DeadCross(ctx)) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_dead_cross";
+        resp["reason_text"] = "데드크로스 + ADX 약화";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity;
+        return resp;
+      }
+      if (pnl_pct >= req.config.take_profit_tier3_pct && !pos.sold_tier3) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_take_profit_tier3";
+        resp["reason_text"] = "분할 익절 +15% 구간";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity * 0.25;
+        return resp;
+      }
+      if (pnl_pct >= req.config.take_profit_tier2_pct && !pos.sold_tier2) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_take_profit_tier2";
+        resp["reason_text"] = "분할 익절 +10% 구간";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity * 0.25;
+        return resp;
+      }
+      if (pnl_pct >= req.config.take_profit_tier1_pct && !pos.sold_tier1) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_take_profit_tier1";
+        resp["reason_text"] = "분할 익절 +5% 구간";
+        resp["side"] = "sell";
+        resp["quantity"] = pos.quantity * 0.25;
+        return resp;
+      }
+      if (ExitRank7TimeStop(req, pos, ctx)) {
+        resp["signal"] = "sell";
+        resp["reason_code"] = "exit_time_stop";
+        resp["reason_text"] = "시간 손절";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
         return resp;
@@ -90,20 +281,48 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     }
   }
 
-  // v0.9: 진입 판단 — 캔들 최소 개수
-  const int min_candles_1h = 24;
-  if (req.candles_1h.size() < static_cast<size_t>(min_candles_1h) &&
+  // ---------- 진입 판단
+  if (req.candles_1h.size() < static_cast<size_t>(kMinCandles1h) &&
       (req.mode == "entry" || req.mode == "both")) {
     resp["signal"] = "hold";
     resp["reason_code"] = "hold_no_signal";
-    resp["reason_text"] = "1시간봉 데이터 부족(최소 24개)";
+    resp["reason_text"] = "1시간봉 데이터 부족(최소 " + std::to_string(kMinCandles1h) + "개)";
     return resp;
   }
 
   if (req.mode == "entry" || req.mode == "both") {
+    ctx = ComputeIndicators(req);
+    if (!PassEntryStage1(req)) {
+      resp["signal"] = "hold";
+      resp["reason_code"] = "hold_stage1";
+      resp["reason_text"] = "1차 미통과(국면 또는 슬롯)";
+      return resp;
+    }
+    if (!PassEntryStage2(req, ctx)) {
+      resp["signal"] = "hold";
+      resp["reason_code"] = "hold_stage2";
+      resp["reason_text"] = "2차 미통과(골든크로스/4h정배열/ADX/거래량)";
+      return resp;
+    }
+    if (PassEntryStage3A(req, ctx)) {
+      resp["signal"] = "buy";
+      resp["reason_code"] = "entry_1_2_3_ok";
+      resp["reason_text"] = "3차 A안 눌림목 진입";
+      resp["side"] = "buy";
+      resp["quantity"] = 0;
+      return resp;
+    }
+    if (PassEntryStage3B(req, ctx)) {
+      resp["signal"] = "buy";
+      resp["reason_code"] = "entry_1_2_3_ok_strong";
+      resp["reason_text"] = "3차 B안 강한 추세 즉시 진입";
+      resp["side"] = "buy";
+      resp["quantity"] = 0;
+      return resp;
+    }
     resp["signal"] = "hold";
-    resp["reason_code"] = "hold_no_signal";
-    resp["reason_text"] = "1차 조건 미충족 (v0.9 골격)";
+    resp["reason_code"] = "hold_stage3";
+    resp["reason_text"] = "3차 미통과(진입 타이밍 대기)";
     return resp;
   }
 

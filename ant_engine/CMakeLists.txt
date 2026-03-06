@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(ant_engine VERSION 0.9 LANGUAGES CXX)
+project(ant_engine VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -21,6 +21,7 @@ FetchContent_MakeAvailable(httplib)
 add_executable(ant_engine
   src/main.cpp
   src/engine.cpp
+  src/indicators.cpp
 )
 
 # Linux(서버) 빌드 시 출력 파일명: AntEngine-버전.bin
