@@ -1,7 +1,7 @@
 name: upbit_trading_app
 description: 배짱이 v1.1 — 업비트 연동 자동매매 앱
 publish_to: 'none'
-version: 1.4.10+14
+version: 1.4.11+15
 # 저작자: 차리 (challychoi@me.com)
 
 environment:

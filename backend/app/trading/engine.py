@@ -1,10 +1,11 @@
 """
 트레이딩 엔진 — 봇 시작 시 업비트 API 검증용 백그라운드 루프.
-- 검증 모드: 실제 주문 없이 잔고 조회(get_accounts)만 수행. 로그에 "업비트 API 연동 확인" 기록.
-- 봇 정지 시 asyncio 태스크 취소, 정상 종료. 미체결 주문 취소는 실제 주문 로직 도입 후 적용.
-- 실제 매매는 추후 전략·주문 로직 이식 후 동작하며, 사용자 책임으로 안내합니다.
 - 종목: Bot.config["coin_select_mode"] (auto|manual), Bot.config["selected_markets"] (수동 시 최대 10종목).
-- 분산 매수: 매수 신호가 여러 종목일 때 상승 가능성(엔진 점수 또는 동일 비중) 비율로 투자금 분배.
+- Bot.config["allocation_strategy"]: profit_first | loss_min | balanced | engine_decision
+  - 수익성우선(profit_first): 상승 점수에 비례·상위 편중 배분(score^1.5).
+  - 손실최소(loss_min): 균등 배분으로 리스크 분산.
+  - 균형(balanced): 균등 배분.
+  - 개미엔진판단(engine_decision): 엔진 점수 그대로 비율 배분.
 """
 
 
@@ -32,6 +33,50 @@ def allocate_krw_by_scores(
         if krw >= min_per_market:
             out[market] = round(krw, 0)
     return out
+
+
+def allocate_by_strategy(
+    total_krw: float,
+    market_scores: list[tuple[str, float]],
+    strategy: str,
+    min_per_market: float = 5000.0,
+) -> dict[str, float]:
+    """
+    투자 전략에 따라 총 투자금을 종목별로 분배.
+    - profit_first: 수익성 우선 — 점수^1.5 비율(상위 종목 편중).
+    - loss_min: 손실 최소 — 균등 배분.
+    - balanced: 균형 — 균등 배분.
+    - engine_decision: 개미엔진 판단 — 점수 그대로 비율 배분(기본 allocate_krw_by_scores).
+    """
+    if not market_scores or total_krw < min_per_market:
+        return {}
+    eligible = [(m, max(0.0, s)) for m, s in market_scores if m]
+    if not eligible:
+        return {}
+
+    if strategy == "profit_first":
+        # 상위 종목에 더 쏠리도록 가중치 = score^1.5
+        weighted = [(m, (s + 0.1) ** 1.5) for m, s in eligible]
+        total_w = sum(w for _, w in weighted)
+        if total_w <= 0:
+            return {}
+        out = {}
+        for (market, w) in weighted:
+            krw = total_krw * (w / total_w)
+            if krw >= min_per_market:
+                out[market] = round(krw, 0)
+        return out
+
+    if strategy in ("loss_min", "balanced"):
+        # 균등 배분
+        n = len(eligible)
+        krw_each = total_krw / n
+        if krw_each < min_per_market:
+            return {}
+        return {m: round(krw_each, 0) for m, _ in eligible}
+
+    # engine_decision 또는 기본
+    return allocate_krw_by_scores(total_krw, market_scores, min_per_market)
 
 import asyncio
 from loguru import logger

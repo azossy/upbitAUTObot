@@ -9,7 +9,7 @@ namespace ant_engine {
 
 // 입출력 연동 가이드 §2·§3 상수
 constexpr const char* kSchemaVersion = "1.0";
-constexpr const char* kEngineVersion = "1.0";
+constexpr const char* kEngineVersion = "1.1";
 constexpr const char* kEngineName    = "AntEngine";
 
 struct Candle {
@@ -39,10 +39,20 @@ struct Config {
   int time_stop_hours = 12;
   double max_investment_ratio = 0.5;
   bool event_window_active = false;
+  // 진입 완화 오버라이드 (0이면 엔진 기본값 사용)
+  double adx_entry_threshold = 0;   // 2차: 기본 25
+  double ema_tolerance_pct = 0;     // 3차 A안: 기본 0.01
+  double rsi_pullback_max = 0;      // 3차 A안: 기본 50
+  double market_score_strong = 0;   // 3차 B안: 기본 8
+  double adx_strong_1h = 0;        // 3차 B안: 기본 35
+  double adx_strong_4h = 0;        // 3차 B안: 기본 30
+  bool allow_entry_3c = false;      // 3차 C안(2차+RSI 40~60) 허용 여부
   NLOHMANN_DEFINE_TYPE_INTRUSIVE(Config,
     max_positions, stop_loss_pct, take_profit_pct,
     take_profit_tier1_pct, take_profit_tier2_pct, take_profit_tier3_pct,
-    time_stop_hours, max_investment_ratio, event_window_active)
+    time_stop_hours, max_investment_ratio, event_window_active,
+    adx_entry_threshold, ema_tolerance_pct, rsi_pullback_max,
+    market_score_strong, adx_strong_1h, adx_strong_4h, allow_entry_3c)
 };
 
 // §2 입력

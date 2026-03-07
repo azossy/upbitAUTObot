@@ -27,7 +27,7 @@ from app.schemas.auth import (
 )
 from app.middleware.auth_middleware import get_current_user
 from app.utils.encryption import encrypt_api_key, decrypt_api_key
-from app.trading.engine import trading_loop
+from app.trading.engine import trading_loop, allocate_by_strategy
 from app.trading.upbit_client import UpbitClient
 
 router = APIRouter(prefix="/api/v1/bot", tags=["봇"])
@@ -138,6 +138,7 @@ async def get_config(
         "telegram_chat_id": user.telegram_chat_id or "",
         "coin_select_mode": config.get("coin_select_mode", "auto"),
         "selected_markets": config.get("selected_markets", []),
+        "allocation_strategy": config.get("allocation_strategy", "engine_decision"),
     }
 
 
@@ -171,12 +172,78 @@ async def update_config(
         config["coin_select_mode"] = req.coin_select_mode if req.coin_select_mode in ("auto", "manual") else "auto"
     if req.selected_markets is not None:
         config["selected_markets"] = [m.strip() for m in req.selected_markets if m and str(m).strip()][:10]
+    if req.allocation_strategy is not None:
+        allowed = ("profit_first", "loss_min", "balanced", "engine_decision")
+        config["allocation_strategy"] = req.allocation_strategy if req.allocation_strategy in allowed else "engine_decision"
     bot.config = config
     attributes.flag_modified(bot, "config")
     await db.commit()
     await db.refresh(bot)
     await db.refresh(user)
     return MessageResponse(message="설정이 저장되었습니다")
+
+
+@router.get("/portfolio-preview")
+async def get_portfolio_preview(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    total_krw: float = Query(None, ge=0, description="투자 금액(원). 미입력 시 원화 잔고 사용"),
+):
+    """
+    현재 봇 설정(종목 목록, 투자 전략)에 따른 예상 포트폴리오 배분.
+    수익성우선/손실최소/균형/개미엔진판단 전략을 반영한다.
+    점수는 미리보기이므로 균등(1.0)으로 계산하며, 실매매 시에는 엔진 점수가 반영된다.
+    """
+    bot = await get_or_create_bot(user, db)
+    config = bot.config or {}
+    strategy = config.get("allocation_strategy", "engine_decision")
+    markets = list(config.get("selected_markets", []))[:10]
+    if not markets:
+        return {
+            "total_krw": 0,
+            "strategy": strategy,
+            "allocations": [],
+            "message": "종목을 선택한 뒤 저장하면 예상 배분을 볼 수 있습니다. (수동 모드에서 최대 10종목)",
+        }
+    if total_krw is None or total_krw <= 0:
+        result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.is_active == True))
+        api_key = result.scalar_one_or_none()
+        if api_key:
+            try:
+                access_key = decrypt_api_key(api_key.encrypted_api_key)
+                secret_key = decrypt_api_key(api_key.encrypted_api_secret)
+                client = UpbitClient(access_key, secret_key)
+                accounts = await client.get_accounts()
+                for acc in accounts:
+                    if acc.get("currency") == "KRW":
+                        total_krw = float(acc.get("balance", 0) or 0)
+                        break
+            except Exception:
+                pass
+        if total_krw is None or total_krw <= 0:
+            total_krw = 0
+    if total_krw < 5000:
+        return {
+            "total_krw": total_krw,
+            "strategy": strategy,
+            "allocations": [],
+            "message": "투자 가능 금액이 부족합니다. (종목당 최소 5,000원)",
+        }
+    # 미리보기: 점수 균등(1.0) — 실매매 시 엔진 점수 사용
+    market_scores = [(m, 1.0) for m in markets]
+    allocation_map = allocate_by_strategy(total_krw, market_scores, strategy, min_per_market=5000.0)
+    total_allocated = sum(allocation_map.values())
+    allocations = []
+    for market, krw in allocation_map.items():
+        pct = round(100.0 * krw / total_allocated, 2) if total_allocated > 0 else 0
+        allocations.append({"market": market, "krw": int(krw), "weight_pct": pct})
+    allocations.sort(key=lambda x: -x["krw"])
+    return {
+        "total_krw": total_krw,
+        "strategy": strategy,
+        "allocations": allocations,
+        "message": None,
+    }
 
 
 @router.get("/balance")

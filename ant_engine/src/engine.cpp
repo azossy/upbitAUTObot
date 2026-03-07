@@ -21,12 +21,13 @@ constexpr int kRsiPeriod = 14;
 constexpr int kVolumePeriod = 20;
 constexpr int kMinCandles1h = 26;
 constexpr int kMinCandles4h = 50;
-constexpr double kAdxEntryThreshold = 25.0;
+// 기본값 = 진입 완화 적용순서 프로필2 (방안1+2: ADX22, EMA 2%, RSI 55)
+constexpr double kAdxEntryThreshold = 22.0;
 constexpr double kAdxStrongTrend = 35.0;
 constexpr double kAdx4hStrong = 30.0;
-constexpr double kRsiPullbackMax = 50.0;
+constexpr double kRsiPullbackMax = 55.0;
 constexpr double kMarketScoreStrong = 8.0;
-constexpr double kEmaTolerancePct = 0.01;
+constexpr double kEmaTolerancePct = 0.02;
 constexpr double kTimeStopPnlMin = -0.5;
 constexpr double kTimeStopPnlMax = 1.5;
 
@@ -128,7 +129,27 @@ static bool Is1hBullishAlignment(const IndicatorContext& ctx) {
   return ctx.ema_short_1h.back() > ctx.ema_long_1h.back();
 }
 
-// --- 진입 2차: 1h 정배열(단기>장기), 4h 정배열, ADX>=25. 거래량은 3차에서만 사용.
+// config 오버라이드 반영 (0이면 기본값 사용)
+static double AdxEntryThreshold(const SignalRequest& req) {
+  return req.config.adx_entry_threshold > 0 ? req.config.adx_entry_threshold : kAdxEntryThreshold;
+}
+static double EmaTolerancePct(const SignalRequest& req) {
+  return req.config.ema_tolerance_pct > 0 ? req.config.ema_tolerance_pct : kEmaTolerancePct;
+}
+static double RsiPullbackMax(const SignalRequest& req) {
+  return req.config.rsi_pullback_max > 0 ? req.config.rsi_pullback_max : kRsiPullbackMax;
+}
+static double MarketScoreStrong(const SignalRequest& req) {
+  return req.config.market_score_strong > 0 ? req.config.market_score_strong : kMarketScoreStrong;
+}
+static double AdxStrong1h(const SignalRequest& req) {
+  return req.config.adx_strong_1h > 0 ? req.config.adx_strong_1h : kAdxStrongTrend;
+}
+static double AdxStrong4h(const SignalRequest& req) {
+  return req.config.adx_strong_4h > 0 ? req.config.adx_strong_4h : kAdx4hStrong;
+}
+
+// --- 진입 2차: 1h 정배열, 4h 정배열, ADX>=문턱.
 bool PassEntryStage2(const SignalRequest& req, const IndicatorContext& ctx) {
   if (!ctx.valid_1h) return false;
   if (!Is1hBullishAlignment(ctx)) return false;
@@ -139,27 +160,42 @@ bool PassEntryStage2(const SignalRequest& req, const IndicatorContext& ctx) {
       if (!Is4hBullishAlignment(ctx.ema_short_4h, ctx.ema_mid_4h, ctx.ema_long_4h)) return false;
     }
   }
-  if (ctx.adx_1h.empty() || ctx.adx_1h.back() < kAdxEntryThreshold) return false;
+  double adx_thr = AdxEntryThreshold(req);
+  if (ctx.adx_1h.empty() || ctx.adx_1h.back() < adx_thr) return false;
   return true;
 }
 
-// --- 진입 3차 A안: 눌림목 — 가격이 단기 EMA 근처, RSI<=50, 거래량<=평균
+// --- 진입 3차 A안: 눌림목 — 가격이 단기 EMA 근처, RSI<=문턱, 거래량<=평균
 bool PassEntryStage3A(const SignalRequest& req, const IndicatorContext& ctx) {
   if (!ctx.valid_1h || ctx.ema_short_1h.empty() || ctx.rsi_1h.empty()) return false;
   double ema_s = ctx.ema_short_1h.back();
   if (ema_s <= 0) return false;
-  double tol = ema_s * kEmaTolerancePct;
+  double tol_pct = EmaTolerancePct(req);
+  double tol = ema_s * tol_pct;
   if (req.current_price < ema_s - tol || req.current_price > ema_s + tol) return false;
-  if (ctx.rsi_1h.back() > kRsiPullbackMax) return false;
+  if (ctx.rsi_1h.back() > RsiPullbackMax(req)) return false;
   if (ctx.vol_avg_20_1h <= 0 || req.candles_1h.back().v > ctx.vol_avg_20_1h) return false;
   return true;
 }
 
-// --- 진입 3차 B안: 강한 추세 — 시장점수>=8, ADX 1h>=35, 4h ADX>=30
+// --- 진입 3차 B안: 강한 추세 — 시장점수·ADX 문턱
 bool PassEntryStage3B(const SignalRequest& req, const IndicatorContext& ctx) {
-  if (req.market_score < kMarketScoreStrong) return false;
-  if (!ctx.valid_1h || ctx.adx_1h.empty() || ctx.adx_1h.back() < kAdxStrongTrend) return false;
-  if (!ctx.valid_4h || ctx.adx_4h.empty() || ctx.adx_4h.back() < kAdx4hStrong) return false;
+  double score_thr = MarketScoreStrong(req);
+  if (req.market_score < score_thr) return false;
+  double adx1 = AdxStrong1h(req), adx4 = AdxStrong4h(req);
+  if (!ctx.valid_1h || ctx.adx_1h.empty() || ctx.adx_1h.back() < adx1) return false;
+  if (!ctx.valid_4h || ctx.adx_4h.empty() || ctx.adx_4h.back() < adx4) return false;
+  return true;
+}
+
+// --- 진입 3차 C안: 2차 통과 + 가격이 4h 단기 EMA 위 + RSI 40~60 (옵션)
+bool PassEntryStage3C(const SignalRequest& req, const IndicatorContext& ctx) {
+  if (!ctx.valid_1h || ctx.rsi_1h.empty()) return false;
+  double rsi = ctx.rsi_1h.back();
+  if (rsi < 40.0 || rsi > 60.0) return false;
+  if (!ctx.valid_4h || ctx.ema_short_4h.empty()) return false;
+  if (req.current_price <= ctx.ema_short_4h.back()) return false;
+  if (ctx.vol_avg_20_1h > 0 && req.candles_1h.back().v > ctx.vol_avg_20_1h * 1.5) return false;
   return true;
 }
 
@@ -168,11 +204,12 @@ bool ExitRank1RegimeDown(const SignalRequest& req) {
   return req.market_regime == "down";
 }
 
-// --- 매각 3순위: 데드크로스 + ADX<25 (2차 확인)
-bool ExitRank3DeadCross(const IndicatorContext& ctx) {
+// --- 매각 3순위: 데드크로스 + ADX<문턱 (2차 확인)
+bool ExitRank3DeadCross(const SignalRequest& req, const IndicatorContext& ctx) {
   if (!ctx.valid_1h) return false;
   if (!HasDeadCross(ctx.ema_short_1h, ctx.ema_long_1h)) return false;
-  return !ctx.adx_1h.empty() && ctx.adx_1h.back() < kAdxEntryThreshold;
+  double adx_thr = AdxEntryThreshold(req);
+  return !ctx.adx_1h.empty() && ctx.adx_1h.back() < adx_thr;
 }
 
 // --- 매각 7순위: 시간 손절 — 12시간 경과 + 수익률 -0.5%~+1.5% + 국면/ADX 약화
@@ -237,7 +274,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["quantity"] = pos.quantity;
         return resp;
       }
-      if (ExitRank3DeadCross(ctx)) {
+      if (ExitRank3DeadCross(req, ctx)) {
         resp["signal"] = "sell";
         resp["reason_code"] = "exit_dead_cross";
         resp["reason_text"] = "데드크로스 + ADX 약화";
@@ -323,6 +360,14 @@ nlohmann::json Evaluate(const SignalRequest& req) {
       resp["signal"] = "buy";
       resp["reason_code"] = "entry_1_2_3_ok_strong";
       resp["reason_text"] = "3차 B안 강한 추세 즉시 진입";
+      resp["side"] = "buy";
+      resp["quantity"] = 0;
+      return resp;
+    }
+    if (req.config.allow_entry_3c && PassEntryStage3C(req, ctx)) {
+      resp["signal"] = "buy";
+      resp["reason_code"] = "entry_1_2_3_ok_c";
+      resp["reason_text"] = "3차 C안 2차+RSI 40~60 진입";
       resp["side"] = "buy";
       resp["quantity"] = 0;
       return resp;

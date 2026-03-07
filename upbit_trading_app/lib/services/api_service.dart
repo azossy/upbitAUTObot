@@ -348,6 +348,7 @@ class ApiService {
     String? telegramChatId,
     String? coinSelectMode,
     List<String>? selectedMarkets,
+    String? allocationStrategy,
   }) async {
     final data = <String, dynamic>{};
     if (maxInvestmentRatio != null) data['max_investment_ratio'] = maxInvestmentRatio;
@@ -361,6 +362,7 @@ class ApiService {
     if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
     if (coinSelectMode != null) data['coin_select_mode'] = coinSelectMode;
     if (selectedMarkets != null) data['selected_markets'] = selectedMarkets;
+    if (allocationStrategy != null) data['allocation_strategy'] = allocationStrategy;
     await _dio.put('/api/v1/bot/config', data: data);
   }
 
@@ -369,6 +371,14 @@ class ApiService {
     final res = await _dio.get('/api/v1/market/krw-markets');
     final list = res.data as List<dynamic>? ?? [];
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// 포트폴리오 예상 배분. 봇 설정(종목·투자 전략) 반영. totalKrw 미입력 시 원화 잔고 사용.
+  Future<Map<String, dynamic>> getPortfolioPreview({double? totalKrw}) async {
+    final q = <String, dynamic>{};
+    if (totalKrw != null && totalKrw > 0) q['total_krw'] = totalKrw;
+    final res = await _dio.get('/api/v1/bot/portfolio-preview', queryParameters: q.isEmpty ? null : q);
+    return Map<String, dynamic>.from(res.data as Map);
   }
 
   /// 비밀번호 변경 (JWT 필요)

@@ -121,7 +121,7 @@ class _UpbitTradingAppState extends ConsumerState<UpbitTradingApp> {
                   NavigationDestination(icon: const Icon(Icons.home), label: l10n.navDashboard),
                   NavigationDestination(icon: const Icon(Icons.account_balance_wallet), label: l10n.navPositions),
                   NavigationDestination(icon: const Icon(Icons.list), label: l10n.navTrades),
-                  NavigationDestination(icon: const Icon(Icons.newspaper), label: l10n.navNews),
+                  NavigationDestination(icon: const Icon(Icons.auto_awesome), label: l10n.navAi),
                   NavigationDestination(icon: const Icon(Icons.person), label: l10n.navMy),
                 ],
               ),

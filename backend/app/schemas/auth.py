@@ -114,6 +114,10 @@ class BotConfigRequest(BaseModel):
     telegram_chat_id: Optional[str] = None
     coin_select_mode: Optional[str] = Field(None, description="auto | manual")
     selected_markets: Optional[List[str]] = Field(None, description="수동 모드 시 종목 코드 목록, 최대 10개")
+    allocation_strategy: Optional[str] = Field(
+        None,
+        description="투자 전략: profit_first(수익성우선) | loss_min(손실최소) | balanced(균형) | engine_decision(개미엔진판단)",
+    )
 
 
 class BotStatusResponse(BaseModel):

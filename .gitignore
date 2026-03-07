@@ -77,3 +77,4 @@ upbit_trading_app/pretendard_extract/
 backend/backtest_data.json
 backend/backtest_data_KRW-*.json
 backend/backtest_results/
+backend/backtest_results_p*/

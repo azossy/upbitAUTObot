@@ -93,6 +93,35 @@ from backtest_engine_signal import build_request, make_sample_candles_1h, make_s
 INITIAL_KRW = 1_000_000  # 시드 100만 원
 MAX_INVESTMENT_RATIO = 1.0  # 100% 자동매매 적용
 
+# 진입 완화 프로필 (docs/시뮬레이션_진입_보수성_분석_및_완화방안.md 적용순서 1~4)
+# 프로필 1: 방안1만(ADX 25→22), 2: +방안2(EMA 2%, RSI 55), 3: +방안4(B안 완화), 4: +방안6(3차 C안)
+def get_entry_profile_config(profile: int) -> dict:
+    """엔진 config에 넣을 진입 완화 오버라이드. 0이면 엔진 기본값 사용."""
+    base = {
+        "adx_entry_threshold": 0,
+        "ema_tolerance_pct": 0,
+        "rsi_pullback_max": 0,
+        "market_score_strong": 0,
+        "adx_strong_1h": 0,
+        "adx_strong_4h": 0,
+        "allow_entry_3c": False,
+    }
+    if profile <= 0:
+        return base
+    # 1: ADX 22
+    if profile >= 1:
+        base["adx_entry_threshold"] = 22.0
+    if profile >= 2:
+        base["ema_tolerance_pct"] = 0.02
+        base["rsi_pullback_max"] = 55.0
+    if profile >= 3:
+        base["market_score_strong"] = 6.0
+        base["adx_strong_1h"] = 30.0
+        base["adx_strong_4h"] = 25.0
+    if profile >= 4:
+        base["allow_entry_3c"] = True
+    return base
+
 # 시장 점수: 최근 20봉 수익률(%) 기반 0~10. 엔진 Stage3B(market_score>=8) 진입용.
 def compute_market_score(candles_1h_slice: list[dict], current_price: float, lookback: int = 20) -> float:
     if not candles_1h_slice or len(candles_1h_slice) < lookback:
@@ -178,9 +207,11 @@ def run_simulation(
     market: str = "KRW-BTC",
     min_candles_1h: int = 26,
     max_steps: int | None = None,
+    entry_profile: int = 0,
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """
     시뮬레이션: balance_krw=100만, max_investment_ratio=1.0.
+    entry_profile: 0=엔진 기본값, 1~4=진입 완화 적용순서(1:ADX22, 2:+3차A완화, 3:+3차B완화, 4:+3차C안).
     반환: (엔진 응답 목록, 거래 로그, 일별 PnL 요약).
     """
     balance_krw = float(INITIAL_KRW)
@@ -212,6 +243,7 @@ def run_simulation(
             "max_investment_ratio": MAX_INVESTMENT_RATIO,
             "event_window_active": False,
         }
+        config.update(get_entry_profile_config(entry_profile))
         market_score = compute_market_score(slice_1h, current_price)
         req = build_request(
             slice_1h,
@@ -544,6 +576,10 @@ def main() -> int:
     parser.add_argument("--output-dir", default="backtest_results", help="결과 저장 디렉터리")
     parser.add_argument("--min-candles", type=int, default=26, help="최소 1h 캔들 수")
     parser.add_argument("--max-steps", type=int, default=None, help="최대 시뮬레이션 스텝 수 (기본 전체)")
+    parser.add_argument("--entry-profile", type=int, default=2, choices=(0, 1, 2, 3, 4),
+                       help="진입 완화 프로필: 0=기본, 1=ADX22, 2=+3차A완화, 3=+3차B완화, 4=+3차C안 (기본 2)")
+    parser.add_argument("--run-all-profiles", action="store_true",
+                       help="프로필 1~4 순차 실행 후 수익률 비교 (단일 데이터 파일 기준)")
     args = parser.parse_args()
 
     if requests is None:
@@ -584,8 +620,45 @@ def main() -> int:
         market = "KRW-BTC"
         print("실제 데이터 없음, 샘플로 실행합니다. --data backtest_data.json 으로 업비트 데이터 사용 권장.")
 
+    if args.run_all_profiles:
+        # 프로필 1~4 순차 실행 후 수익률 비교
+        results = []
+        for prof in (1, 2, 3, 4):
+            out_dir = f"{args.output_dir}_p{prof}"
+            os.makedirs(out_dir, exist_ok=True)
+            print(f"\n--- 진입 프로필 {prof} 실행 중 (출력: {out_dir}) ---")
+            run_start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            engine_responses, trades, daily = run_simulation(
+                args.engine_url, candles_1h, candles_4h, market=market,
+                min_candles_1h=args.min_candles, max_steps=args.max_steps, entry_profile=prof,
+            )
+            run_end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            total_pnl = sum(t.get("pnl_krw", 0) for t in trades if t["side"] == "sell")
+            total_pct = 100.0 * total_pnl / INITIAL_KRW
+            buy_count = sum(1 for t in trades if t["side"] == "buy")
+            period_from = candles_1h[0]["t"][:10] if candles_1h else None
+            period_to = candles_1h[-1]["t"][:10] if candles_1h else None
+            write_report(market, trades, daily, engine_responses, out_dir, period_from=period_from, period_to=period_to)
+            with open(os.path.join(out_dir, "simulation_run_time.txt"), "w", encoding="utf-8") as f:
+                f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market}\nentry_profile={prof}\n")
+            results.append({"profile": prof, "total_pnl": total_pnl, "total_pct": total_pct, "buy_count": buy_count})
+            print(f"  프로필 {prof}: 수익 {total_pnl:,.0f}원 ({total_pct:.4f}%), 매수 {buy_count}회")
+        # 비교표 출력 및 최적 프로필
+        print("\n=== 진입 프로필 비교 (수익률 기준 최적 = 적용 권장) ===")
+        print("| 프로필 | 총 실현손익(원) | 수익률(%) | 매수 횟수 |")
+        print("|--------|-----------------|-----------|----------|")
+        for r in results:
+            print(f"| {r['profile']} | {r['total_pnl']:,.0f} | {r['total_pct']:.4f} | {r['buy_count']} |")
+        # 수익률 우선, 동점이면 매수 횟수 많은 쪽, 그다음 프로필 2(진입 기회 확대) 우선
+        best = max(
+            results,
+            key=lambda x: (round(x["total_pct"], 6), x["buy_count"], 1 if x["profile"] == 2 else 0),
+        )
+        print(f"\n권장 적용: 프로필 {best['profile']} (수익률 {best['total_pct']:.4f}%, 매수 {best['buy_count']}회)")
+        return 0
+
     print("개미엔진 연결 확인됨.")
-    print(f"시드: {INITIAL_KRW:,}원 (100% 자동매매), 종목: {market}")
+    print(f"시드: {INITIAL_KRW:,}원 (100% 자동매매), 종목: {market}, 진입 프로필: {args.entry_profile}")
     print(f"1h 봉: {len(candles_1h)}개, 4h 봉: {len(candles_4h)}개")
     print("시뮬레이션 중...")
     run_start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -596,6 +669,7 @@ def main() -> int:
         market=market,
         min_candles_1h=args.min_candles,
         max_steps=args.max_steps,
+        entry_profile=args.entry_profile,
     )
     print(f"거래 수: 매수 {sum(1 for t in trades if t['side']=='buy')}회, 매도 {sum(1 for t in trades if t['side']=='sell')}회")
     total_pnl = sum(t.get("pnl_krw", 0) for t in trades if t["side"] == "sell")
@@ -607,7 +681,7 @@ def main() -> int:
     write_report(market, trades, daily, engine_responses, args.output_dir, period_from=period_from, period_to=period_to)
     os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, "simulation_run_time.txt"), "w", encoding="utf-8") as f:
-        f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market}\n")
+        f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market}\nentry_profile={args.entry_profile}\n")
     return 0
 
 
