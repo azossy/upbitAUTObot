@@ -86,6 +86,9 @@ ENGINE_START_WAIT_SEC = 2
 
 # 동일 디렉터리 backtest_engine_signal 모듈 사용
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
+DEFAULT_DOCS_DIR = os.path.join(PROJECT_ROOT, "docs")
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 from backtest_engine_signal import build_request, make_sample_candles_1h, make_sample_candles_4h_from_1h
@@ -93,8 +96,9 @@ from backtest_engine_signal import build_request, make_sample_candles_1h, make_s
 INITIAL_KRW = 1_000_000  # 시드 100만 원
 MAX_INVESTMENT_RATIO = 1.0  # 100% 자동매매 적용
 
-# 진입 완화 프로필 (docs/시뮬레이션_진입_보수성_분석_및_완화방안.md 적용순서 1~4)
+# 진입 완화 프로필 (docs/시뮬레이션_진입_보수성_분석_및_완화방안.md 적용순서 1~4, 5=수익률최우선 소폭공격적)
 # 프로필 1: 방안1만(ADX 25→22), 2: +방안2(EMA 2%, RSI 55), 3: +방안4(B안 완화), 4: +방안6(3차 C안)
+# 프로필 5: 2차·3차 A 소폭 완화 — ADX 20, EMA 2.5%, RSI 58 (config 전용, 엔진 기본값 변경 없음)
 def get_entry_profile_config(profile: int) -> dict:
     """엔진 config에 넣을 진입 완화 오버라이드. 0이면 엔진 기본값 사용."""
     base = {
@@ -107,6 +111,12 @@ def get_entry_profile_config(profile: int) -> dict:
         "allow_entry_3c": False,
     }
     if profile <= 0:
+        return base
+    # 프로필 5: 소폭 공격적 (ADX 20, EMA 2.5%, RSI 58) — 2·3차 A만 완화
+    if profile == 5:
+        base["adx_entry_threshold"] = 20.0
+        base["ema_tolerance_pct"] = 0.025
+        base["rsi_pullback_max"] = 58.0
         return base
     # 1: ADX 22
     if profile >= 1:
@@ -368,6 +378,204 @@ def run_simulation(
     return engine_responses, trades, daily_list
 
 
+MIN_ORDER_KRW = 5000
+
+
+def run_simulation_multi(
+    engine_url: str,
+    markets_data: list[tuple[str, list[dict], list[dict]]],
+    seed_krw: float = INITIAL_KRW,
+    min_candles_1h: int = 26,
+    max_steps: int | None = None,
+    entry_profile: int = 0,
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """
+    다종목 시뮬레이션: 시드 1개 풀, 유리한 포지션(allocation_score 높은 종목)에 더 많이 배정, 종목별 매수/매도.
+    markets_data: [(market, candles_1h, candles_4h), ...] 최대 10종목.
+    """
+    if not markets_data:
+        return [], [], []
+    balance_krw = float(seed_krw)
+    positions: list[dict] = []
+    trades: list[dict] = []
+    engine_responses: list[dict] = []
+
+    # 리드 시장: 1h 봉 수가 가장 많은 종목으로 공통 타임라인
+    lead_market = max(markets_data, key=lambda x: len(x[1]))
+    lead_1h = lead_market[1]
+    lead_4h = lead_market[2]
+    n_lead = len(lead_1h)
+    start_i = min_candles_1h
+    end_i = n_lead
+    if max_steps is not None:
+        end_i = min(end_i, start_i + max_steps)
+
+    config_base = {
+        "max_positions": 7,
+        "stop_loss_pct": 2.5,
+        "take_profit_pct": 7.0,
+        "take_profit_tier1_pct": 5.0,
+        "take_profit_tier2_pct": 10.0,
+        "take_profit_tier3_pct": 15.0,
+        "time_stop_hours": 12,
+        "max_investment_ratio": MAX_INVESTMENT_RATIO,
+        "event_window_active": False,
+        **get_entry_profile_config(entry_profile),
+    }
+
+    for step_i in range(start_i, end_i):
+        t = lead_1h[step_i]["t"]
+        ts_4h = t
+        # 종목별 엔진 호출 및 응답 수집
+        market_responses: list[tuple[str, dict, float, dict]] = []  # (market, body, current_price, req_slice)
+
+        for market, candles_1h, candles_4h in markets_data:
+            if len(candles_1h) < min_candles_1h:
+                continue
+            # 리드 시각 t 이하인 마지막 캔들 인덱스
+            j = next((i for i in range(len(candles_1h) - 1, -1, -1) if candles_1h[i]["t"] <= t), -1)
+            if j < 0 or j + 1 < min_candles_1h:
+                continue
+            slice_1h = candles_1h[: j + 1]
+            slice_4h = [x for x in candles_4h if x["t"] <= ts_4h] if candles_4h else []
+            if not slice_4h and candles_4h:
+                slice_4h = candles_4h[: (j // 4) + 1]
+            current_price = slice_1h[-1]["c"]
+            if current_price <= 0:
+                continue
+            positions_engine = [position_to_engine(p) for p in positions if p["market"] == market]
+            market_score = compute_market_score(slice_1h, current_price)
+            req = build_request(
+                slice_1h,
+                slice_4h,
+                current_price=current_price,
+                timestamp_utc=t,
+                request_id=f"sim-{step_i}-{market}",
+                market=market,
+                positions=positions_engine,
+                market_regime="up",
+                market_score=market_score,
+            )
+            req["balance_krw"] = balance_krw
+            req["config"] = {**config_base}
+            try:
+                r = requests.post(f"{engine_url.rstrip('/')}/signal", json=req, timeout=5)
+                body = r.json()
+            except Exception as e:
+                body = {"status": "error", "signal": "hold", "allocation_score": 0}
+            body["_market"] = market
+            body["_step"] = step_i
+            body["_t"] = t
+            body["_price"] = current_price
+            body["_response_time_local"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            body["_positions_count"] = len([p for p in positions if p["market"] == market])
+            body["_balance_krw"] = balance_krw
+            engine_responses.append(body)
+            market_responses.append((market, body, current_price, req))
+
+        # 매도 먼저: 종목별 signal sell 처리
+        for market, body, current_price, _ in market_responses:
+            if body.get("status") != "ok" or body.get("signal") != "sell":
+                continue
+            pos_idx = next((i for i, p in enumerate(positions) if p["market"] == market), None)
+            if pos_idx is None:
+                continue
+            pos = positions[pos_idx]
+            sell_qty = body.get("quantity") or pos["quantity"]
+            actual_sell = min(sell_qty, pos["quantity"])
+            if actual_sell <= 0:
+                continue
+            revenue = actual_sell * current_price
+            pnl = revenue - actual_sell * pos["avg_entry_price"]
+            balance_krw += revenue
+            reason_code = body.get("reason_code", "")
+            trades.append({
+                "timestamp_utc": t,
+                "market": market,
+                "side": "sell",
+                "price": current_price,
+                "quantity": actual_sell,
+                "amount_krw": revenue,
+                "reason_code": reason_code,
+                "pnl_krw": pnl,
+                "balance_after": balance_krw,
+            })
+            if actual_sell >= pos["quantity"]:
+                positions.pop(pos_idx)
+            else:
+                pos["quantity"] -= actual_sell
+                if "tier1" in reason_code:
+                    pos["sold_tier1"] = True
+                elif "tier2" in reason_code:
+                    pos["sold_tier2"] = True
+                elif "tier3" in reason_code:
+                    pos["sold_tier3"] = True
+
+        # 배정: allocation_score로 유리한 종목에 더 많이. 매수 신호 있는 종목만 배정
+        buy_candidates = [(m, b, cp) for m, b, cp, _ in market_responses
+                          if b.get("status") == "ok" and b.get("signal") == "buy" and balance_krw >= MIN_ORDER_KRW]
+        if not buy_candidates:
+            continue
+        scores = [(m, float(b.get("allocation_score", 0)) + 0.1) for m, b, _ in buy_candidates]
+        total_w = sum(w for _, w in scores)
+        if total_w <= 0:
+            continue
+        allocatable = balance_krw * MAX_INVESTMENT_RATIO
+        for (market, body, current_price) in buy_candidates:
+            score = float(body.get("allocation_score", 0)) + 0.1
+            alloc_krw = allocatable * (score / total_w)
+            if alloc_krw < MIN_ORDER_KRW or balance_krw < MIN_ORDER_KRW:
+                continue
+            invest_krw = min(alloc_krw, balance_krw)
+            if invest_krw < MIN_ORDER_KRW:
+                continue
+            qty = invest_krw / current_price
+            if qty <= 0:
+                continue
+            cost = qty * current_price
+            balance_krw -= cost
+            positions.append({
+                "market": market,
+                "quantity": qty,
+                "avg_entry_price": current_price,
+                "entry_timestamp_utc": t,
+                "sold_tier1": False,
+                "sold_tier2": False,
+                "sold_tier3": False,
+            })
+            trades.append({
+                "timestamp_utc": t,
+                "market": market,
+                "side": "buy",
+                "price": current_price,
+                "quantity": qty,
+                "amount_krw": cost,
+                "reason_code": body.get("reason_code", ""),
+                "balance_after": balance_krw,
+            })
+
+    daily: dict[str, dict] = defaultdict(lambda: {"pnl_krw": 0.0, "trades": 0})
+    for tr in trades:
+        if tr["side"] != "sell":
+            continue
+        date_key = tr["timestamp_utc"][:10]
+        daily[date_key]["pnl_krw"] += tr.get("pnl_krw", 0)
+        daily[date_key]["trades"] += 1
+    daily_list = []
+    cum = 0.0
+    for d in sorted(daily.keys()):
+        cum += daily[d]["pnl_krw"]
+        daily_list.append({
+            "date": d,
+            "daily_pnl_krw": round(daily[d]["pnl_krw"], 2),
+            "daily_pnl_pct": round(100 * daily[d]["pnl_krw"] / seed_krw, 4),
+            "cumulative_pnl_krw": round(cum, 2),
+            "cumulative_pnl_pct": round(100 * cum / seed_krw, 4),
+            "trades_count": daily[d]["trades"],
+        })
+    return engine_responses, trades, daily_list
+
+
 # 개미엔진 진입은 3단계: 1차(국면·슬롯) → 2차(1h·4h 정배열, ADX) → 3차 A안/3차 B안
 def stage_from_reason(reason_code: str) -> tuple[str, str, str, str, str]:
     """reason_code → (1차, 2차, 3차, 3-1스테이지(A안), 3-2스테이지(B안))."""
@@ -569,6 +777,140 @@ def write_report(
     print(f"저장: {path_md}")
 
 
+def write_simulation_report_doc(
+    output_dir: str,
+    report_date: str,
+    session: int,
+    docs_dir: str,
+    run_start: str = "",
+    run_end: str = "",
+    entry_profile: int = 0,
+    data_file: str = "",
+    engine_url: str = "http://127.0.0.1:9100",
+) -> None:
+    """
+    docs/시뮬레이션 보고서-날짜-회차.md 생성.
+    시뮬레이션 조건, 기초데이터 구성형식, 실행 방법, 결과 요약, 마지막에 response 레코드·스테이지별 통과 여부 상세.
+    """
+    path_json = os.path.join(output_dir, "backtest_report.json")
+    path_detail = os.path.join(output_dir, "engine_responses_detail.md")
+    if not os.path.isfile(path_json):
+        print(f"보고서 생성 생략: {path_json} 없음", file=sys.stderr)
+        return
+    with open(path_json, "r", encoding="utf-8") as f:
+        report = json.load(f)
+    summary = report.get("summary", {})
+    market = summary.get("market", "")
+    stage_detail = report.get("stage_detail", [])
+    trades = report.get("trades", [])
+    daily = report.get("daily", [])
+    detail_content = ""
+    if os.path.isfile(path_detail):
+        with open(path_detail, "r", encoding="utf-8") as f:
+            detail_content = f.read().strip()
+
+    lines = []
+    lines.append(f"# 시뮬레이션 보고서 — {report_date} {session}회차")
+    lines.append("")
+    lines.append("## 1. 시뮬레이션 조건")
+    lines.append("")
+    lines.append("| 항목 | 내용 |")
+    lines.append("|------|------|")
+    lines.append(f"| 시드(원) | {summary.get('initial_krw', INITIAL_KRW):,} |")
+    lines.append(f"| 자동매매 비율 | 100% |")
+    lines.append(f"| 종목 | {market} |")
+    if report.get("daily"):
+        period_from = daily[0].get("date", "") if daily else ""
+        period_to = daily[-1].get("date", "") if daily else ""
+        lines.append(f"| 데이터 기간 | {period_from} ~ {period_to} |")
+    lines.append(f"| 진입 프로필 | {entry_profile} (0=기본, 1=ADX22, 2=+3차A, 3=+3차B, 4=+3차C) |")
+    lines.append(f"| 엔진 URL | {engine_url} |")
+    lines.append(f"| 실행 시작 | {run_start} |")
+    lines.append(f"| 실행 종료 | {run_end} |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 2. 기초데이터 구성형식")
+    lines.append("")
+    lines.append("시뮬레이션 입력 데이터는 JSON 파일이며, 아래 필드를 가집니다.")
+    lines.append("")
+    lines.append("| 필드 | 설명 |")
+    lines.append("|------|------|")
+    lines.append("| `market` | 종목 코드 (예: KRW-BTC, KRW-ETH) |")
+    lines.append("| `candles_1h` | 1시간봉 배열. 각 봉: `t`(ISO8601 시각), `o`,`h`,`l`,`c`,`v` |")
+    lines.append("| `candles_4h` | 4시간봉 배열. 동일 구조 |")
+    lines.append("")
+    lines.append("캔들 한 개 예시:")
+    lines.append("```json")
+    lines.append('  {"t": "2026-01-01T00:00:00+00:00", "o": 95000000, "h": 95200000, "l": 94800000, "c": 95100000, "v": 123.45}')
+    lines.append("```")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 3. 시뮬레이션 실행 방법")
+    lines.append("")
+    lines.append("1) 기초데이터 수집 (업비트):")
+    lines.append("```bash")
+    lines.append("cd backend")
+    lines.append("python scripts/fetch_ohlcv_upbit.py --market KRW-BTC --from 2026-01-01 --to 2026-03-05 --output backtest_data_KRW-BTC.json")
+    lines.append("```")
+    lines.append("")
+    lines.append("2) 개미엔진 실행 후 백테스트:")
+    lines.append("```bash")
+    data_arg = f" --data {data_file}" if data_file else " --data backtest_data.json"
+    lines.append(f"python scripts/backtest_upbit_simulation.py{data_arg} --entry-profile {entry_profile} --output-dir {output_dir}")
+    lines.append("```")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 4. 시뮬레이션 결과 요약")
+    lines.append("")
+    lines.append("| 항목 | 값 |")
+    lines.append("|------|-----|")
+    lines.append(f"| 총 실현 손익(원) | {summary.get('total_realized_pnl_krw', 0):,.2f} |")
+    lines.append(f"| 총 수익률(%) | {summary.get('total_return_pct', 0):.4f} |")
+    lines.append(f"| 매수 횟수 | {summary.get('buy_count', 0)} |")
+    lines.append(f"| 매도 횟수 | {summary.get('sell_count', 0)} |")
+    lines.append(f"| 총 판단 횟수 | {len(stage_detail)} |")
+    lines.append("")
+    lines.append("### 거래 로그")
+    lines.append("")
+    lines.append("| 시각(UTC) | 구분 | 종목 | 체결금액(원) | 단가 | 수량 | reason_code | 실현손익(원) |")
+    lines.append("|-----------|------|------|--------------|------|------|-------------|---------------|")
+    for t in trades:
+        side_label = "매수" if t["side"] == "buy" else "매도"
+        pnl_str = f"{t.get('pnl_krw', 0):,.2f}" if t["side"] == "sell" else "-"
+        lines.append(f"| {t.get('timestamp_utc', '')} | {side_label} | {t.get('market', '')} | {t.get('amount_krw', 0):,.2f} | {t.get('price', 0):,.0f} | {t.get('quantity', 0):.6f} | {t.get('reason_code', '')} | {pnl_str} |")
+    lines.append("")
+    lines.append("### 일별 수익률")
+    lines.append("")
+    lines.append("| 날짜 | 일별 손익(원) | 일별 수익률(%) | 누적 손익(원) | 누적 수익률(%) | 거래 수 |")
+    lines.append("|------|---------------|----------------|----------------|----------------|--------|")
+    for row in daily:
+        lines.append(f"| {row.get('date', '')} | {row.get('daily_pnl_krw', 0):,.2f} | {row.get('daily_pnl_pct', 0):.4f} | {row.get('cumulative_pnl_krw', 0):,.2f} | {row.get('cumulative_pnl_pct', 0):.4f} | {row.get('trades_count', 0)} |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("## 5. 응답 레코드 및 스테이지별 통과 여부 (상세 백데이터)")
+    lines.append("")
+    lines.append("엔진이 판단한 주기마다 한 레코드씩 기록. 업비트 봉 시각, 시스템 판단 시각, 1·2·3-1·3-2 스테이지 통과 여부, 신호·현재가·잔고 등.")
+    lines.append("")
+    if detail_content:
+        lines.append(detail_content)
+    else:
+        # fallback: 테이블만 생성
+        lines.append("| 스텝 | 판단 시각(UTC) | 주기 | 현재가 | 신호 | reason_code | 1차 | 2차 | 3-1(A안) | 3-2(B안) |")
+        lines.append("|------|----------------|------|--------|------|-------------|-----|-----|----------|----------|")
+        for r in stage_detail:
+            lines.append(f"| {r.get('step', '')} | {r.get('timestamp_utc', '')} | {r.get('interval_label', '-')} | {r.get('current_price', 0):,.0f} | {r.get('signal', '')} | {r.get('reason_code', '')} | {r.get('stage1', '')} | {r.get('stage2', '')} | {r.get('stage3_1', '')} | {r.get('stage3_2', '')} |")
+    lines.append("")
+    os.makedirs(docs_dir, exist_ok=True)
+    out_path = os.path.join(docs_dir, f"시뮬레이션 보고서-{report_date}-{session}회차.md")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print(f"저장: {out_path}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="업비트 실데이터 + 개미엔진 모의 백테스트 (시드 100만원)")
     parser.add_argument("--data", default="backtest_data.json", help="캔들 JSON (candles_1h, candles_4h) 또는 없으면 샘플")
@@ -576,11 +918,18 @@ def main() -> int:
     parser.add_argument("--output-dir", default="backtest_results", help="결과 저장 디렉터리")
     parser.add_argument("--min-candles", type=int, default=26, help="최소 1h 캔들 수")
     parser.add_argument("--max-steps", type=int, default=None, help="최대 시뮬레이션 스텝 수 (기본 전체)")
-    parser.add_argument("--entry-profile", type=int, default=2, choices=(0, 1, 2, 3, 4),
-                       help="진입 완화 프로필: 0=기본, 1=ADX22, 2=+3차A완화, 3=+3차B완화, 4=+3차C안 (기본 2)")
+    parser.add_argument("--entry-profile", type=int, default=2, choices=(0, 1, 2, 3, 4, 5),
+                       help="진입 완화 프로필: 0=기본, 1=ADX22, 2=+3차A완화, 3=+3차B완화, 4=+3차C안, 5=소폭공격적(ADX20,EMA2.5%%,RSI58) (기본 2)")
     parser.add_argument("--run-all-profiles", action="store_true",
                        help="프로필 1~4 순차 실행 후 수익률 비교 (단일 데이터 파일 기준)")
+    parser.add_argument("--session", type=int, default=1, help="회차 번호 (보고서 파일명용, 기본 1)")
+    parser.add_argument("--report-date", default=None, help="보고서 날짜 YYYY-MM-DD (기본: 오늘)")
+    parser.add_argument("--docs-dir", default=DEFAULT_DOCS_DIR, help="시뮬레이션 보고서 저장 docs 디렉터리")
+    parser.add_argument("--markets", default=None, help="다종목 쉼표 구분 (예: KRW-BTC,KRW-ETH,KRW-SOL). 지정 시 시드 분산·종목별 판단.")
+    parser.add_argument("--seed", type=float, default=INITIAL_KRW, help="시드 금액 (다종목 시 사용, 기본 100만)")
+    parser.add_argument("--data-dir", default=None, help="다종목 JSON 파일 디렉터리 (기본: backend 현재 디렉터리)")
     args = parser.parse_args()
+    report_date = args.report_date or datetime.now().strftime("%Y-%m-%d")
 
     if requests is None:
         print("pip install requests 필요", file=sys.stderr)
@@ -620,6 +969,62 @@ def main() -> int:
         market = "KRW-BTC"
         print("실제 데이터 없음, 샘플로 실행합니다. --data backtest_data.json 으로 업비트 데이터 사용 권장.")
 
+    # 다종목 모드: --markets 로 최대 10종목, 시드 분산·allocation_score 배정
+    if args.markets:
+        markets_list = [m.strip() for m in args.markets.split(",") if m.strip()][:10]
+        if not markets_list:
+            print("--markets 에 종목을 입력하세요. 예: KRW-BTC,KRW-ETH,KRW-SOL", file=sys.stderr)
+            return 1
+        data_dir = args.data_dir or BACKEND_DIR
+        markets_data = []
+        for market in markets_list:
+            path = os.path.join(data_dir, f"backtest_data_{market}.json")
+            if not os.path.isfile(path):
+                print(f"파일 없음: {path}", file=sys.stderr)
+                continue
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            c1 = data.get("candles_1h", [])
+            c4 = data.get("candles_4h", [])
+            if not c1:
+                print(f"{market}: candles_1h 없음", file=sys.stderr)
+                continue
+            markets_data.append((market, c1, c4))
+        if not markets_data:
+            print("로드된 종목 데이터 없음.", file=sys.stderr)
+            return 1
+        print(f"다종목 시뮬레이션: 시드 {args.seed:,.0f}원, 종목 {len(markets_data)}개 — {[m[0] for m in markets_data]}")
+        run_start = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        engine_responses, trades, daily = run_simulation_multi(
+            args.engine_url,
+            markets_data,
+            seed_krw=args.seed,
+            min_candles_1h=args.min_candles,
+            max_steps=args.max_steps,
+            entry_profile=args.entry_profile,
+        )
+        run_end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        total_pnl = sum(t.get("pnl_krw", 0) for t in trades if t["side"] == "sell")
+        print(f"거래: 매수 {sum(1 for t in trades if t['side']=='buy')}회, 매도 {sum(1 for t in trades if t['side']=='sell')}회")
+        print(f"총 실현 손익: {total_pnl:,.2f}원 ({100*total_pnl/args.seed:.4f}%)")
+        market_label = ",".join(m[0] for m in markets_data)
+        lead_1h = max(markets_data, key=lambda x: len(x[1]))[1]
+        period_from = lead_1h[0]["t"][:10] if lead_1h else ""
+        period_to = lead_1h[-1]["t"][:10] if lead_1h else ""
+        # 다종목 보고서: 첫 종목 응답만 stage_detail로 (요약용)
+        first_market = markets_data[0][0]
+        responses_first = [r for r in engine_responses if r.get("_market") == first_market]
+        write_report(market_label, trades, daily, responses_first, args.output_dir, period_from=period_from, period_to=period_to)
+        os.makedirs(args.output_dir, exist_ok=True)
+        with open(os.path.join(args.output_dir, "simulation_run_time.txt"), "w", encoding="utf-8") as f:
+            f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market_label}\nentry_profile={args.entry_profile}\nseed={args.seed}\n")
+        write_simulation_report_doc(
+            args.output_dir, report_date, args.session, args.docs_dir,
+            run_start=run_start, run_end=run_end, entry_profile=args.entry_profile,
+            data_file="", engine_url=args.engine_url,
+        )
+        return 0
+
     if args.run_all_profiles:
         # 프로필 1~4 순차 실행 후 수익률 비교
         results = []
@@ -641,6 +1046,11 @@ def main() -> int:
             write_report(market, trades, daily, engine_responses, out_dir, period_from=period_from, period_to=period_to)
             with open(os.path.join(out_dir, "simulation_run_time.txt"), "w", encoding="utf-8") as f:
                 f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market}\nentry_profile={prof}\n")
+            write_simulation_report_doc(
+                out_dir, report_date, prof, args.docs_dir,
+                run_start=run_start, run_end=run_end, entry_profile=prof,
+                data_file=args.data, engine_url=args.engine_url,
+            )
             results.append({"profile": prof, "total_pnl": total_pnl, "total_pct": total_pct, "buy_count": buy_count})
             print(f"  프로필 {prof}: 수익 {total_pnl:,.0f}원 ({total_pct:.4f}%), 매수 {buy_count}회")
         # 비교표 출력 및 최적 프로필
@@ -682,6 +1092,11 @@ def main() -> int:
     os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, "simulation_run_time.txt"), "w", encoding="utf-8") as f:
         f.write(f"시뮬레이션_시작={run_start}\n시뮬레이션_종료={run_end}\n종목={market}\nentry_profile={args.entry_profile}\n")
+    write_simulation_report_doc(
+        args.output_dir, report_date, args.session, args.docs_dir,
+        run_start=run_start, run_end=run_end, entry_profile=args.entry_profile,
+        data_file=args.data, engine_url=args.engine_url,
+    )
     return 0
 
 

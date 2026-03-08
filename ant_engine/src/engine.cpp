@@ -244,6 +244,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     resp["signal"] = "hold";
     resp["reason_code"] = "hold_event_window";
     resp["reason_text"] = "미국 거시 이벤트 창 — 진입 보류";
+    resp["allocation_score"] = 0;
     return resp;
   }
 
@@ -264,6 +265,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "국면 하락 전환";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
+        resp["allocation_score"] = (pnl_pct >= 0 ? 6 : 3);
         return resp;
       }
       if (pnl_pct <= -req.config.stop_loss_pct) {
@@ -272,6 +274,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "손절 조건 충족";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
+        resp["allocation_score"] = 3;
         return resp;
       }
       if (ExitRank3DeadCross(req, ctx)) {
@@ -280,6 +283,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "데드크로스 + ADX 약화";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
+        resp["allocation_score"] = (pnl_pct >= 0 ? 6 : 3);
         return resp;
       }
       if (pnl_pct >= req.config.take_profit_tier3_pct && !pos.sold_tier3) {
@@ -288,6 +292,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "분할 익절 +15% 구간";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity * 0.25;
+        resp["allocation_score"] = 6;
         return resp;
       }
       if (pnl_pct >= req.config.take_profit_tier2_pct && !pos.sold_tier2) {
@@ -296,6 +301,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "분할 익절 +10% 구간";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity * 0.25;
+        resp["allocation_score"] = 6;
         return resp;
       }
       if (pnl_pct >= req.config.take_profit_tier1_pct && !pos.sold_tier1) {
@@ -304,6 +310,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "분할 익절 +5% 구간";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity * 0.25;
+        resp["allocation_score"] = 6;
         return resp;
       }
       if (ExitRank7TimeStop(req, pos, ctx)) {
@@ -312,6 +319,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "시간 손절";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
+        resp["allocation_score"] = (pnl_pct >= 0 ? 6 : 3);
         return resp;
       }
       if (pnl_pct >= req.config.take_profit_pct) {
@@ -320,6 +328,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
         resp["reason_text"] = "익절 조건 충족";
         resp["side"] = "sell";
         resp["quantity"] = pos.quantity;
+        resp["allocation_score"] = 6;
         return resp;
       }
     }
@@ -331,6 +340,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
     resp["signal"] = "hold";
     resp["reason_code"] = "hold_no_signal";
     resp["reason_text"] = "1시간봉 데이터 부족(최소 " + std::to_string(kMinCandles1h) + "개)";
+    resp["allocation_score"] = 0;
     return resp;
   }
 
@@ -340,12 +350,14 @@ nlohmann::json Evaluate(const SignalRequest& req) {
       resp["signal"] = "hold";
       resp["reason_code"] = "hold_stage1";
       resp["reason_text"] = "1차 미통과(국면 또는 슬롯)";
+      resp["allocation_score"] = 0;
       return resp;
     }
     if (!PassEntryStage2(req, ctx)) {
       resp["signal"] = "hold";
       resp["reason_code"] = "hold_stage2";
       resp["reason_text"] = "2차 미통과(1h·4h 정배열/ADX)";
+      resp["allocation_score"] = 2;
       return resp;
     }
     if (PassEntryStage3A(req, ctx)) {
@@ -354,6 +366,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
       resp["reason_text"] = "3차 A안 눌림목 진입";
       resp["side"] = "buy";
       resp["quantity"] = 0;
+      resp["allocation_score"] = 8;
       return resp;
     }
     if (PassEntryStage3B(req, ctx)) {
@@ -362,6 +375,7 @@ nlohmann::json Evaluate(const SignalRequest& req) {
       resp["reason_text"] = "3차 B안 강한 추세 즉시 진입";
       resp["side"] = "buy";
       resp["quantity"] = 0;
+      resp["allocation_score"] = 8;
       return resp;
     }
     if (req.config.allow_entry_3c && PassEntryStage3C(req, ctx)) {
@@ -370,17 +384,20 @@ nlohmann::json Evaluate(const SignalRequest& req) {
       resp["reason_text"] = "3차 C안 2차+RSI 40~60 진입";
       resp["side"] = "buy";
       resp["quantity"] = 0;
+      resp["allocation_score"] = 8;
       return resp;
     }
     resp["signal"] = "hold";
     resp["reason_code"] = "hold_stage3";
     resp["reason_text"] = "3차 미통과(진입 타이밍 대기)";
+    resp["allocation_score"] = 4;
     return resp;
   }
 
   resp["signal"] = "hold";
   resp["reason_code"] = "hold_no_signal";
   resp["reason_text"] = "시그널 없음";
+  resp["allocation_score"] = 1;
   return resp;
 }
 
