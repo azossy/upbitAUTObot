@@ -73,8 +73,12 @@ upbit-trading-system/
 upbit_trading_app/PretendardStd.zip
 upbit_trading_app/pretendard_extract/
 
-# 백테스트·시뮬레이션 테스트 산출물 (자체 실행용, GitHub에는 docs 시뮬레이션 보고서만 올림)
+# 백테스트·시뮬레이션 (자체 테스트용. GitHub에는 시뮬레이션 결과 문서만 올림)
 backend/backtest_data.json
 backend/backtest_data_KRW-*.json
 backend/backtest_results/
 backend/backtest_results_p*/
+backend/backtest_*.json
+
+# 개미엔진: 로컬 시뮬레이션용(.exe)은 GitHub에 올리지 않음. 배포는 AntEngine-버전정보.bin 만
+ant_engine/release/*.exe
